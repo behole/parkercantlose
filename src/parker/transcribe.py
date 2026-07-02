@@ -9,7 +9,6 @@ import warnings
 from contextlib import contextmanager
 from pathlib import Path
 
-import torch
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -25,13 +24,18 @@ def detect_device(device_pref: str = "auto") -> tuple[str, str]:
     Note: ctranslate2 (WhisperX backend) only supports CUDA and CPU.
     MPS (Apple Silicon) is not supported and falls back to CPU.
     """
+    try:
+        import torch
+    except ImportError:
+        torch = None
+
     if device_pref == "auto":
-        if torch.cuda.is_available():
+        if torch and torch.cuda.is_available():
             return "cuda", "float16"
         else:
             return "cpu", "int8"
     elif device_pref == "cuda":
-        if not torch.cuda.is_available():
+        if not torch or not torch.cuda.is_available():
             logger.warning("CUDA requested but not available, falling back to CPU")
             return "cpu", "int8"
         return "cuda", "float16"
@@ -121,6 +125,7 @@ def transcribe_audio(
 
     gc.collect()
     if detected_device == "cuda":
+        import torch
         torch.cuda.empty_cache()
     del model
 
@@ -159,6 +164,7 @@ def align_transcription(
 
     gc.collect()
     if detected_device == "cuda":
+        import torch
         torch.cuda.empty_cache()
     del model_a
 
@@ -174,6 +180,8 @@ def diarize_audio(
     device: str = "auto",
 ) -> DiarizationResult:
     """Stage 3: Speaker diarization using pyannote directly."""
+    import torch
+
     pyannote_pipeline_class = _load_pyannote_pipeline_class()
 
     detected_device, _ = detect_device(device)
