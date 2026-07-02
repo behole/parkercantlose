@@ -237,6 +237,55 @@ def link_guest(
         typer.echo(f"Linked {youtube_id} → {guest.name}")
 
 
+@app.command()
+def monitor(
+    process: bool = typer.Option(False, "--process", help="Auto-process new videos through the pipeline"),
+    watch: bool = typer.Option(False, "--watch", help="Continuously poll for new videos"),
+    interval: int = typer.Option(300, help="Poll interval in seconds (with --watch)"),
+) -> None:
+    """Check Parker's YouTube channel for new videos."""
+    from parker.monitor import PARKER_CHANNEL_ID, find_new_videos
+
+    settings = get_settings()
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+
+    import time
+
+    def _check():
+        new = find_new_videos(engine, PARKER_CHANNEL_ID)
+        if not new:
+            typer.echo("No new videos found.")
+            return
+
+        typer.echo(f"Found {len(new)} new video(s):")
+        for v in new:
+            typer.echo(f"  {v['video_id']}  {v['title'][:60]}  ({v['published'][:10]})")
+
+        if process:
+            for v in new:
+                typer.echo(f"\nProcessing {v['video_id']}...")
+                result = process_video(
+                    url=v["url"],
+                    engine=engine,
+                    audio_dir=settings.audio_dir,
+                    transcript_dir=settings.transcript_dir,
+                    hf_token=settings.hf_token,
+                )
+                if result:
+                    typer.echo(f"  Completed: {result.youtube_id}")
+                else:
+                    typer.echo(f"  Failed: {v['video_id']}", err=True)
+
+    if watch:
+        typer.echo(f"Watching for new videos every {interval}s. Press Ctrl+C to stop.")
+        while True:
+            _check()
+            time.sleep(interval)
+    else:
+        _check()
+
+
 def main():
     app()
 
