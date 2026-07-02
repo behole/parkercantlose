@@ -104,6 +104,7 @@ def transcribe_audio(
     compute = detected_compute if detected_device == "cpu" else (compute_type or detected_compute)
 
     logger.info("Loading WhisperX model: %s on %s with %s", model_name, detected_device, compute)
+    vad_method = "silero" if detected_device == "cpu" else "pyannote"
     with _suppress_torchcodec_warning():
         model = whisperx.load_model(
             model_name,
@@ -113,6 +114,7 @@ def transcribe_audio(
             asr_options={
                 "condition_on_previous_text": False,
             },
+            vad_method=vad_method,
         )
 
     logger.info("Loading audio: %s", audio_path)
