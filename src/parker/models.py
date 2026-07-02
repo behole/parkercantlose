@@ -22,6 +22,13 @@ class VideoStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class Guest(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Utterance(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     debate_id: int = Field(foreign_key="debate.id", index=True)
@@ -52,6 +59,7 @@ class Debate(SQLModel, table=True):
     raw_transcript_path: Optional[str] = None
     schema_version: int = Field(default=1)
     review_status: ReviewStatus = Field(default=ReviewStatus.UNREVIEWED)
+    guest_id: Optional[int] = Field(default=None, foreign_key="guest.id", index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     utterances: List[Utterance] = Relationship(back_populates="debate")

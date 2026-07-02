@@ -4,6 +4,7 @@ from sqlmodel import Session, delete, func, select
 
 from parker.models import (
     Debate,
+    Guest,
     Keyword,
     NLPResult,
     ReviewStatus,
@@ -351,6 +352,77 @@ def delete_nlp_results_for_debate(session: Session, debate_id: int) -> None:
         for row in session.exec(statement).all():
             session.delete(row)
     session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Guest CRUD — cross-video caller tracking
+# ---------------------------------------------------------------------------
+
+
+def create_guest(session: Session, name: str, notes: str | None = None) -> Guest:
+    """Create a new guest profile."""
+    guest = Guest(name=name, notes=notes)
+    session.add(guest)
+    session.commit()
+    session.refresh(guest)
+    return guest
+
+
+def get_guest(session: Session, guest_id: int) -> Guest | None:
+    return session.get(Guest, guest_id)
+
+
+def get_all_guests(session: Session) -> list[Guest]:
+    statement = select(Guest).order_by(Guest.name)
+    return list(session.exec(statement).all())
+
+
+def link_debate_to_guest(session: Session, debate_id: int, guest_id: int) -> Debate | None:
+    """Link a debate's caller to an existing guest profile."""
+    debate = session.get(Debate, debate_id)
+    if debate is None:
+        return None
+    debate.guest_id = guest_id
+    debate.updated_at = datetime.utcnow()
+    session.add(debate)
+    session.commit()
+    session.refresh(debate)
+    return debate
+
+
+def get_guest_appearances(session: Session, guest_id: int) -> list[Debate]:
+    """Get all debates where this guest appeared as the caller."""
+    statement = (
+        select(Debate)
+        .where(Debate.guest_id == guest_id)
+        .order_by(Debate.created_at.desc())
+    )
+    return list(session.exec(statement).all())
+
+
+def get_guest_stats(session: Session, guest_id: int) -> dict:
+    """Get aggregate stats for a guest across all their debates."""
+    guest = session.get(Guest, guest_id)
+    if guest is None:
+        return {"name": None, "total_debates": 0, "total_utterances": 0}
+
+    debates = get_guest_appearances(session, guest_id)
+    debate_ids = [d.id for d in debates]
+
+    utterance_count = 0
+    if debate_ids:
+        utterance_count = session.exec(
+            select(func.count())
+            .select_from(Utterance)
+            .where(Utterance.debate_id.in_(debate_ids), Utterance.speaker == "caller")
+        ).one()
+
+    return {
+        "name": guest.name,
+        "notes": guest.notes,
+        "total_debates": len(debates),
+        "total_utterances": utterance_count,
+    }
 
 
 # ---------------------------------------------------------------------------

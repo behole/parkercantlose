@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 from parker.config import get_settings
-from parker.db import get_engine, init_db
+from parker.db import get_engine, get_session, init_db
 from parker.models import VideoStatus
 from parker.pipeline import get_status_summary, process_batch, process_video, retry_failed
 
@@ -183,6 +183,58 @@ def rebuild_search() -> None:
     init_db(engine)
     rebuild_fts(engine)
     typer.echo("FTS index rebuilt.")
+
+
+@app.command(name="guests")
+def list_guests() -> None:
+    """List all known guests and their cross-video appearances."""
+    from parker.crud import get_all_guests, get_guest_stats
+
+    settings = get_settings()
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+
+    with get_session(engine) as session:
+        guests = get_all_guests(session)
+        if not guests:
+            typer.echo("No guests yet. Use 'parker guest-link <youtube_id> <name>' to add one.")
+            return
+        for guest in guests:
+            stats = get_guest_stats(session, guest.id)
+            typer.echo(
+                f"  {guest.id:>3}  {guest.name[:40]:<40}  "
+                f"{stats['total_debates']} debates, {stats['total_utterances']} utterances"
+            )
+
+
+@app.command(name="guest-link")
+def link_guest(
+    youtube_id: str = typer.Argument(help="YouTube ID of the debate"),
+    guest_name: str = typer.Argument(help="Guest name (creates if new)"),
+) -> None:
+    """Link a debate's caller to a guest profile (creates guest if needed)."""
+    from parker.crud import create_guest, get_all_guests, get_debate_by_youtube_id, link_debate_to_guest
+
+    settings = get_settings()
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+
+    with get_session(engine) as session:
+        debate = get_debate_by_youtube_id(session, youtube_id)
+        if debate is None:
+            typer.echo(f"Debate not found: {youtube_id}", err=True)
+            raise typer.Exit(code=1)
+
+        existing = next((g for g in get_all_guests(session) if g.name.lower() == guest_name.lower()), None)
+        if existing:
+            guest = existing
+            typer.echo(f"Found existing guest: {guest.name} (id={guest.id})")
+        else:
+            guest = create_guest(session, name=guest_name)
+            typer.echo(f"Created new guest: {guest.name} (id={guest.id})")
+
+        link_debate_to_guest(session, debate.id, guest.id)
+        typer.echo(f"Linked {youtube_id} → {guest.name}")
 
 
 def main():
