@@ -8,7 +8,7 @@
   </span>
 
   <span class="speaker-badge speaker-{{ u.speaker }}"
-        hx-put="/api/utterances/{{ u.id }}/speaker"
+        hx-put="/admin/api/utterances/{{ u.id }}/speaker"
         hx-target="#segment-{{ u.id }}"
         hx-swap="outerHTML"
         title="Click to toggle speaker{% if u.original_speaker %} (was: {{ u.original_speaker }}){% endif %}">
@@ -23,7 +23,7 @@
   </span>
 
   <form class="segment-edit-form" id="text-form-{{ u.id }}" style="display:none;"
-        hx-patch="/api/utterances/{{ u.id }}/text"
+        hx-patch="/admin/api/utterances/{{ u.id }}/text"
         hx-target="#segment-{{ u.id }}"
         hx-swap="outerHTML">
     <textarea name="text" rows="2">{{ u.text }}</textarea>

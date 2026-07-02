@@ -20,10 +20,10 @@
   {% if item.match.status == "suggested" %}
   <footer>
     <div role="group">
-      <button hx-post="/api/topic-matches/{{ item.match.id }}/confirm"
+      <button hx-post="/admin/api/topic-matches/{{ item.match.id }}/confirm"
               hx-target="#match-{{ item.match.id }}"
               hx-swap="outerHTML">Confirm</button>
-      <button hx-post="/api/topic-matches/{{ item.match.id }}/reject"
+      <button hx-post="/admin/api/topic-matches/{{ item.match.id }}/reject"
               hx-target="#match-{{ item.match.id }}"
               hx-swap="outerHTML"
               class="secondary">Reject</button>

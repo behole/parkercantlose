@@ -37,15 +37,15 @@
   {% if topic.status == "suggested" %}
   <footer>
     <div role="group">
-      <button hx-post="/api/topics/{{ topic.id }}/accept"
+      <button hx-post="/admin/api/topics/{{ topic.id }}/accept"
               hx-target="#topic-{{ topic.id }}"
               hx-swap="outerHTML">Accept</button>
-      <button hx-post="/api/topics/{{ topic.id }}/reject"
+      <button hx-post="/admin/api/topics/{{ topic.id }}/reject"
               hx-target="#topic-{{ topic.id }}"
               hx-swap="outerHTML"
               class="secondary">Reject</button>
     </div>
-    <form hx-post="/api/topics/{{ topic.id }}/rename"
+    <form hx-post="/admin/api/topics/{{ topic.id }}/rename"
           hx-target="#topic-{{ topic.id }}"
           hx-swap="outerHTML"
           style="display: inline-flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">

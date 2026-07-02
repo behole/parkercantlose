@@ -23,7 +23,7 @@
       <td>{{ edit_counts.get(debate.id, 0) if edit_counts else '—' }}</td>
       <td>
         {% if debate.status.value == 'completed' %}
-        <a href="/videos/{{ debate.youtube_id }}/review" role="button" class="outline">Review</a>
+        <a href="/admin/videos/{{ debate.youtube_id }}/review" role="button" class="outline">Review</a>
         {% else %}
         <small>{{ debate.status.value }}</small>
         {% endif %}
