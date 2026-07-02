@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Review: {{ debate.title }} - Parker Debate Review{% endblock %}
+{% block content %}
+<a href="/videos">&larr; Back to videos</a>
+<h2>{{ debate.title }}</h2>
+
+<div class="approval-bar" id="approval-bar">
+  <div class="approval-status">
+    {% include "partials/status_badge.html" with context %}
+  </div>
+  <div class="approval-actions">
+    {% if debate.review_status.value != 'approved' %}
+    <button hx-post="/api/videos/{{ youtube_id }}/approve"
+            hx-target="#approval-bar"
+            hx-swap="outerHTML"
+            class="btn-approve">
+      Approve Transcript
+    </button>
+    {% else %}
+    <span class="approved-message">Transcript approved for NLP analysis</span>
+    <button hx-post="/api/videos/{{ youtube_id }}/unapprove"
+            hx-target="#approval-bar"
+            hx-swap="outerHTML"
+            class="btn-unapprove outline">
+      Revoke Approval
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="review-layout">
+  <!-- Video panel -->
+  <div class="video-panel">
+    <div id="player-wrap">
+      <div id="player"></div>
+    </div>
+    <div class="video-controls">
+      <label>
+        <input type="checkbox" id="auto-scroll-toggle" checked>
+        Auto-scroll transcript
+      </label>
+      <span class="edit-count" id="edit-count">
+        {% set edited = utterances | selectattr('edited_at') | list | length %}
+        {% if edited > 0 %}{{ edited }} edit{{ 's' if edited != 1 }} made{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <!-- Transcript panel -->
+  <div class="transcript-panel" id="transcript-panel">
+    {% for u in utterances %}
+      {% include "partials/segment.html" %}
+    {% endfor %}
+    {% if not utterances %}
+      <p>No transcript segments found for this debate.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.YOUTUBE_VIDEO_ID = "{{ youtube_id }}";
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="/static/review.js"></script>
+{% endblock %}

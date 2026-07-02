@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Topics: {{ debate.title }} - Parker Debate Review{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/videos">Videos</a></li>
+    <li><a href="/videos/{{ youtube_id }}/review">{{ debate.title }}</a></li>
+    <li>Topics</li>
+  </ul>
+</nav>
+
+<h2>Topics: {{ debate.title }}</h2>
+
+{% if nlp_result is none or nlp_result.status != "completed" %}
+<article>
+  <p>NLP analysis has not been run for this debate. Run <code>parker analyze --youtube-id {{ youtube_id }}</code> first.</p>
+</article>
+{% else %}
+
+<section>
+  <h3>Topics ({{ topics|length }})</h3>
+  {% for topic in topics %}
+    {% set stances = stances_by_topic.get(topic.id, []) %}
+    {% include "partials/topic_card.html" %}
+  {% endfor %}
+  {% if not topics %}
+  <p>No topics found for this debate.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h3>Keywords ({{ keywords|length }})</h3>
+  {% if keywords %}
+  <table role="grid">
+    <thead>
+      <tr>
+        <th>Phrase</th>
+        <th>Speaker</th>
+        <th>Count</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for kw in keywords %}
+      <tr>
+        <td>{{ kw.phrase }}</td>
+        <td>
+          <span class="{% if kw.speaker == 'parker' %}parker-label{% else %}caller-label{% endif %}">
+            {{ kw.speaker | upper }}
+          </span>
+        </td>
+        <td>{{ kw.count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No keywords found.</p>
+  {% endif %}
+</section>
+
+{% endif %}
+{% endblock %}

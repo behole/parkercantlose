@@ -1,0 +1,10 @@
+Starting...
+Imported OK
+Created API instance
+Fetch returned: <class 'youtube_transcript_api._transcripts.FetchedTranscript'>
+First entry type: <class 'youtube_transcript_api._transcripts.FetchedTranscriptSnippet'>
+First entry repr: FetchedTranscriptSnippet(text='Let me let the Instagram know that we', start=2.48, duration=5.0)
+  .text = Let me let the Instagram know that we
+  .start = 2.48
+  .duration = 5.0
+Total segments: 7191

@@ -1,0 +1,17 @@
+[Unit]
+Description=Parker Debate Dashboard
+After=network.target
+
+[Service]
+Type=notify
+User=parker
+Group=parker
+WorkingDirectory=/opt/parker
+Environment=PATH=/opt/parker/.venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/opt/parker/.env
+ExecStart=/opt/parker/.venv/bin/gunicorn -c deploy/gunicorn.conf.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

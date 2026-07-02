@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Parker Debate Dashboard{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Explore analyzed debate topics, keywords, and patterns across Parker's debates.{% endblock %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <meta property="og:title" content="{% block og_title %}Parker Debate Dashboard{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Explore analyzed debate topics, keywords, and patterns.{% endblock %}">
+    <meta property="og:type" content="website">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul><li><strong><a href="/">Parker Debates</a></strong></li></ul>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/debates">Debates</a></li>
+        <li><a href="/patterns">Patterns</a></li>
+        <li><a href="/search">Search</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="container">
+    <small>Built from analyzed debate transcripts. Only approved, reviewed debates are shown.</small>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Videos - Parker Debate Review{% endblock %}
+{% block content %}
+<h1>Debates</h1>
+
+{% if debates %}
+<table class="debate-table" role="grid">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Review Status</th>
+      <th>Edits</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for debate in debates %}
+    <tr>
+      <td>{{ debate.title }}</td>
+      <td>
+        {% include "partials/status_badge.html" with context %}
+      </td>
+      <td>{{ edit_counts.get(debate.id, 0) if edit_counts else '—' }}</td>
+      <td>
+        {% if debate.status.value == 'completed' %}
+        <a href="/videos/{{ debate.youtube_id }}/review" role="button" class="outline">Review</a>
+        {% else %}
+        <small>{{ debate.status.value }}</small>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No debates found. Process some videos first using <code>parker process &lt;youtube-url&gt;</code>.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "public_base.html" %}
+{% block title %}Cross-Debate Patterns - Parker Debate Dashboard{% endblock %}
+{% block og_title %}Cross-Debate Patterns{% endblock %}
+{% block og_description %}How arguments appear and shift across all analyzed debates.{% endblock %}
+
+{% block content %}
+<h1>Cross-Debate Patterns</h1>
+<p style="color: var(--pico-muted-color);">How arguments appear and shift across all analyzed debates.</p>
+
+{% if patterns %}
+<div class="stance-legend">
+    <span class="stance-legend-item"><span class="stance-legend-dot stance-SUPPORTS"></span> Supports</span>
+    <span class="stance-legend-item"><span class="stance-legend-dot stance-OPPOSES"></span> Opposes</span>
+    <span class="stance-legend-item"><span class="stance-legend-dot stance-QUALIFIED"></span> Qualified</span>
+    <span class="stance-legend-item"><span class="stance-legend-dot stance-DEFLECTS"></span> Deflects</span>
+</div>
+
+<section>
+    <h2>Topics Across Debates</h2>
+    {% for pattern in patterns %}
+    <div class="pattern-card">
+        <h4>
+            <a href="/patterns/topic/{{ pattern.topic | urlencode }}">{{ pattern.topic }}</a>
+            <small style="color: var(--pico-muted-color); font-weight: normal;">
+                &mdash; {{ pattern.debate_count }} debate{{ "" if pattern.debate_count == 1 else "s" }}
+            </small>
+        </h4>
+        {% for speaker, dist in pattern.stance_distribution.items() %}
+        <div style="margin-top: 0.5rem;">
+            <strong style="font-size: 0.85rem;">{{ speaker | capitalize }}</strong>
+            {% set total = dist.values() | sum %}
+            <div class="stance-bar-container">
+                {% for label, count in dist.items() %}
+                <div class="stance-bar-segment stance-{{ label }}"
+                     style="width: {{ (count / total * 100) | round(1) }}%;"
+                     title="{{ label }}: {{ count }} ({{ (count / total * 100) | round(0) | int }}%)">
+                    {% if count / total > 0.15 %}{{ count }}{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</section>
+{% else %}
+<article>
+    <p>No cross-debate patterns found yet. Analyze more debates to see patterns emerge.</p>
+</article>
+{% endif %}
+
+{% if top_keywords %}
+<section>
+    <h2>Top Keywords (Parker)</h2>
+    {% set max_count = top_keywords[0][1] if top_keywords else 1 %}
+    {% for phrase, count in top_keywords %}
+    <div class="keyword-bar-row">
+        <span class="keyword-bar-label">{{ phrase }}</span>
+        <div class="keyword-bar-track">
+            <div class="keyword-bar-fill" style="width: {{ (count / max_count * 100) | round(1) }}%;"></div>
+        </div>
+        <span class="keyword-bar-count">{{ count }}</span>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

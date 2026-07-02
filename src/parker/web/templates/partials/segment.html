@@ -1,0 +1,39 @@
+<div class="segment{% if u.edited_at %} segment--edited{% endif %}"
+     id="segment-{{ u.id }}"
+     data-start="{{ u.start_time }}"
+     data-end="{{ u.end_time }}">
+
+  <span class="segment-time" onclick="seekTo({{ u.start_time }})">
+    {{ '%d:%02d' % (u.start_time // 60, u.start_time % 60) }}
+  </span>
+
+  <span class="speaker-badge speaker-{{ u.speaker }}"
+        hx-put="/api/utterances/{{ u.id }}/speaker"
+        hx-target="#segment-{{ u.id }}"
+        hx-swap="outerHTML"
+        title="Click to toggle speaker{% if u.original_speaker %} (was: {{ u.original_speaker }}){% endif %}">
+    {{ u.speaker }}
+  </span>
+
+  <span class="segment-text"
+        id="text-display-{{ u.id }}"
+        onclick="startEdit({{ u.id }}, this)"
+        title="Click to edit">
+    {{ u.text }}
+  </span>
+
+  <form class="segment-edit-form" id="text-form-{{ u.id }}" style="display:none;"
+        hx-patch="/api/utterances/{{ u.id }}/text"
+        hx-target="#segment-{{ u.id }}"
+        hx-swap="outerHTML">
+    <textarea name="text" rows="2">{{ u.text }}</textarea>
+    <div class="edit-actions">
+      <button type="submit" class="btn-save">Save</button>
+      <button type="button" class="btn-cancel" onclick="cancelEdit({{ u.id }})">Cancel</button>
+    </div>
+  </form>
+
+  {% if u.edited_at %}
+  <span class="segment-edited-indicator" title="Edited {{ u.edited_at.strftime('%Y-%m-%d %H:%M') if u.edited_at else '' }}">&#9998;</span>
+  {% endif %}
+</div>

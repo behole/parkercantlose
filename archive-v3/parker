@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""Parker Pipeline — entry point. Delegates to pipeline.cli."""
+import sys
+import os
+
+# Ensure project root is on path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from pipeline.cli import main
+main()

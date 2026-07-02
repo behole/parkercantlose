@@ -1,0 +1,55 @@
+{
+  "title": "Parker Pipeline Dashboard",
+  "description": "Searchable archive of Parker's Trump supporter debate livestreams",
+  "databases": {
+    "parker": {
+      "tables": {
+        "videos": {
+          "title": "Videos",
+          "description": "All ingested livestreams",
+          "sort_desc": "total_duration_sec"
+        },
+        "utterances": {
+          "title": "Transcript",
+          "description": "Every utterance with speaker tags and timestamps",
+          "sort": "start_sec",
+          "facets": ["speaker", "video_id", "chapter"],
+          "searchmode": "raw"
+        },
+        "chapters": {
+          "title": "Chapters",
+          "description": "Guest conversation boundaries with timestamps",
+          "sort": "start_time",
+          "facets": ["video_id"]
+        }
+      },
+      "queries": {
+        "keyword_mentions": {
+          "title": "Keyword Mention Count",
+          "description": "Count how many times a keyword appears, broken down by speaker",
+          "sql": "SELECT speaker, COUNT(*) as utterances, SUM(length(text) - length(replace(lower(text), lower(:keyword), '')))/length(:keyword) as total_mentions FROM utterances WHERE lower(text) LIKE '%' || lower(:keyword) || '%' GROUP BY speaker ORDER BY total_mentions DESC"
+        },
+        "topic_heatmap": {
+          "title": "Topic Mentions by Video",
+          "description": "Count topic keyword mentions per video",
+          "sql": "SELECT v.title, v.video_id, SUM(CASE WHEN lower(u.text) LIKE '%economy%' OR lower(u.text) LIKE '%tariff%' OR lower(u.text) LIKE '%inflation%' OR lower(u.text) LIKE '%tax%' THEN 1 ELSE 0 END) as economy, SUM(CASE WHEN lower(u.text) LIKE '%immigra%' OR lower(u.text) LIKE '%border%' OR lower(u.text) LIKE '%deport%' THEN 1 ELSE 0 END) as immigration, SUM(CASE WHEN lower(u.text) LIKE '%abort%' OR lower(u.text) LIKE '%trans %' OR lower(u.text) LIKE '%gender%' OR lower(u.text) LIKE '%gun %' THEN 1 ELSE 0 END) as social_issues, SUM(CASE WHEN lower(u.text) LIKE '%epstein%' OR lower(u.text) LIKE '%deep state%' OR lower(u.text) LIKE '%qanon%' THEN 1 ELSE 0 END) as conspiracy, SUM(CASE WHEN lower(u.text) LIKE '%climate%' OR lower(u.text) LIKE '%environment%' OR lower(u.text) LIKE '%energy%' THEN 1 ELSE 0 END) as environment FROM utterances u JOIN videos v ON u.video_id = v.video_id GROUP BY v.video_id"
+        },
+        "guest_leaderboard": {
+          "title": "Guest Leaderboard",
+          "description": "Guest stats: who talked the most, longest conversations",
+          "sql": "SELECT u.video_id, u.speaker, COUNT(*) as utterances, CAST(SUM(length(u.text))/5 AS INTEGER) as est_words, CAST((MAX(u.end_sec) - MIN(u.start_sec))/60 AS INTEGER) as duration_min, printf('%d:%02d:%02d', CAST(MIN(u.start_sec)/3600 AS INT), CAST((MIN(u.start_sec)%3600)/60 AS INT), CAST(MIN(u.start_sec)%60 AS INT)) as start_time FROM utterances u WHERE u.speaker != 'parker' GROUP BY u.video_id, u.speaker ORDER BY utterances DESC"
+        },
+        "search_transcript": {
+          "title": "Search Transcripts",
+          "description": "Full-text search across all transcripts",
+          "sql": "SELECT u.video_id, u.speaker, u.chapter, printf('%d:%02d:%02d', CAST(u.start_sec/3600 AS INT), CAST((u.start_sec%3600)/60 AS INT), CAST(u.start_sec%60 AS INT)) as timestamp, u.text, 'https://youtu.be/' || u.video_id || '?t=' || CAST(u.start_sec AS INT) as youtube_link FROM utterances u JOIN utterances_fts fts ON u.id = fts.rowid WHERE utterances_fts MATCH :query ORDER BY rank LIMIT 50"
+        },
+        "epstein_tracker": {
+          "title": "Epstein Mentions",
+          "description": "Every mention of Epstein across all streams",
+          "sql": "SELECT u.video_id, u.speaker, u.chapter, printf('%d:%02d:%02d', CAST(u.start_sec/3600 AS INT), CAST((u.start_sec%3600)/60 AS INT), CAST(u.start_sec%60 AS INT)) as timestamp, u.text, 'https://youtu.be/' || u.video_id || '?t=' || CAST(u.start_sec AS INT) as youtube_link FROM utterances u WHERE lower(u.text) LIKE '%epstein%' ORDER BY u.video_id, u.start_sec"
+        }
+      }
+    }
+  }
+}

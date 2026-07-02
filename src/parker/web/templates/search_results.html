@@ -1,0 +1,51 @@
+{% extends "public_base.html" %}
+{% block title %}Search{% if query %}: {{ query }}{% endif %} - Parker Debate Dashboard{% endblock %}
+{% block og_title %}Search Transcripts{% endblock %}
+
+{% block content %}
+<h1>Search Transcripts</h1>
+
+<form action="/search" method="get" style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-bottom: 2rem;">
+  <input type="search" name="q" value="{{ query }}" placeholder="Search debate transcripts..." autofocus>
+  <button type="submit">Search</button>
+</form>
+
+{% if query %}
+  {% if results %}
+    <p><small>{{ results | length }} result{{ "s" if results | length != 1 else "" }} for &ldquo;{{ query }}&rdquo;</small></p>
+
+    {% for debate_id, debate_info in debates_with_matches.items() %}
+    <article>
+      <header>
+        <strong><a href="/debate/{{ debate_info.youtube_id }}">{{ debate_info.title }}</a></strong>
+        {% if debate_info.matches | length == 1 %}
+          <a href="https://www.youtube.com/watch?v={{ debate_info.youtube_id }}&t={{ debate_info.matches[0].start_time | int }}" target="_blank" rel="noopener" role="button" class="secondary outline" style="margin-left: 0.5rem; font-size: 0.8rem;">Watch at this moment</a>
+        {% endif %}
+      </header>
+
+      {% if debates_with_matches | length == 1 and debate_info.matches | length <= 5 %}
+      <div style="margin-bottom: 1rem;">
+        <iframe width="100%" height="315" src="https://www.youtube.com/embed/{{ debate_info.youtube_id }}?start={{ debate_info.matches[0].start_time | int }}" frameborder="0" allowfullscreen loading="lazy"></iframe>
+      </div>
+      {% endif %}
+
+      {% for match in debate_info.matches %}
+      <div class="search-result" style="margin-bottom: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span><strong>{{ match.speaker | capitalize }}</strong></span>
+          <small>
+            <a href="https://www.youtube.com/watch?v={{ match.youtube_id }}&t={{ match.start_time | int }}" target="_blank" rel="noopener">
+              {{ "%.0f:%02d" | format((match.start_time / 60) | int, (match.start_time % 60) | int) }}
+            </a>
+          </small>
+        </div>
+        <p style="margin: 0.25rem 0;">{{ match.snippet | safe }}</p>
+      </div>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  {% else %}
+    <p>No results found for &ldquo;{{ query }}&rdquo;.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

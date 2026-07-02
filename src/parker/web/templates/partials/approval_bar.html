@@ -1,0 +1,23 @@
+<div class="approval-bar" id="approval-bar">
+  <div class="approval-status">
+    {% include "partials/status_badge.html" with context %}
+  </div>
+  <div class="approval-actions">
+    {% if debate.review_status.value != 'approved' %}
+    <button hx-post="/api/videos/{{ youtube_id }}/approve"
+            hx-target="#approval-bar"
+            hx-swap="outerHTML"
+            class="btn-approve">
+      Approve Transcript
+    </button>
+    {% else %}
+    <span class="approved-message">Transcript approved for NLP analysis</span>
+    <button hx-post="/api/videos/{{ youtube_id }}/unapprove"
+            hx-target="#approval-bar"
+            hx-swap="outerHTML"
+            class="btn-unapprove outline">
+      Revoke Approval
+    </button>
+    {% endif %}
+  </div>
+</div>

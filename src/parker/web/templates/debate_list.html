@@ -1,0 +1,70 @@
+{% extends "public_base.html" %}
+{% block title %}Debates - Parker Debate Dashboard{% endblock %}
+{% block og_title %}Browse Debates{% endblock %}
+{% block og_description %}Browse and filter analyzed debates by topic, speaker, stance, and keyword.{% endblock %}
+
+{% block content %}
+<h1>Debates</h1>
+
+<form class="filter-bar"
+      hx-get="/debates/partials/list"
+      hx-target="#debate-results"
+      hx-trigger="change, submit"
+      hx-push-url="true">
+
+    <div class="filter-group">
+        <label for="filter-topic">Topic</label>
+        <select name="topic" id="filter-topic">
+            <option value="">All topics</option>
+            {% for t in all_topics %}
+            <option value="{{ t }}" {% if filters.topic == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-speaker">Speaker</label>
+        <select name="speaker" id="filter-speaker">
+            <option value="">Both</option>
+            <option value="parker" {% if filters.speaker == 'parker' %}selected{% endif %}>Parker</option>
+            <option value="caller" {% if filters.speaker == 'caller' %}selected{% endif %}>Caller</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-stance">Stance</label>
+        <select name="stance" id="filter-stance">
+            <option value="">All stances</option>
+            <option value="SUPPORTS" {% if filters.stance == 'SUPPORTS' %}selected{% endif %}>Supports</option>
+            <option value="OPPOSES" {% if filters.stance == 'OPPOSES' %}selected{% endif %}>Opposes</option>
+            <option value="QUALIFIED" {% if filters.stance == 'QUALIFIED' %}selected{% endif %}>Qualified</option>
+            <option value="DEFLECTS" {% if filters.stance == 'DEFLECTS' %}selected{% endif %}>Deflects</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-keyword">Keyword</label>
+        <input type="text" name="keyword" id="filter-keyword"
+               placeholder="e.g. second amendment"
+               value="{{ filters.keyword or '' }}">
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-date-from">From</label>
+        <input type="date" name="date_from" id="filter-date-from"
+               value="{{ filters.date_from or '' }}">
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-date-to">To</label>
+        <input type="date" name="date_to" id="filter-date-to"
+               value="{{ filters.date_to or '' }}">
+    </div>
+
+    <button type="submit" class="outline">Filter</button>
+</form>
+
+<div id="debate-results">
+    {% include "partials/debate_cards.html" %}
+</div>
+{% endblock %}

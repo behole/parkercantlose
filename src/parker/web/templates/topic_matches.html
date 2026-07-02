@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Cross-Debate Topic Matches - Parker Debate Review{% endblock %}
+{% block content %}
+<h2>Cross-Debate Topic Matches</h2>
+
+<section>
+  <h3>Suggested Matches ({{ suggested|length }})</h3>
+  {% if suggested %}
+    {% for item in suggested %}
+      {% include "partials/match_card.html" %}
+    {% endfor %}
+  {% else %}
+  <p>No suggested matches. Run NLP analysis on more debates to find cross-debate topic similarities.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h3>Confirmed Matches ({{ confirmed|length }})</h3>
+  {% if confirmed %}
+    {% for item in confirmed %}
+      {% include "partials/match_card.html" %}
+    {% endfor %}
+  {% else %}
+  <p>No confirmed matches yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

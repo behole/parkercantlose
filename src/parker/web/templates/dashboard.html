@@ -1,0 +1,78 @@
+{% extends "public_base.html" %}
+{% block title %}Parker Debate Dashboard{% endblock %}
+{% block og_title %}Parker Debate Dashboard{% endblock %}
+{% block og_description %}Explore {{ stats.total_debates }} analyzed debates with {{ stats.total_topics }} topics and {{ stats.total_keywords }} keywords.{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>Debate Dashboard</h1>
+  <p>Explore topics, keywords, and patterns across analyzed debates</p>
+</hgroup>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <div class="stat-number">{{ stats.total_debates }}</div>
+    <div class="stat-label">Debates Analyzed</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-number">{{ stats.total_topics }}</div>
+    <div class="stat-label">Unique Topics</div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-number">{{ stats.total_keywords }}</div>
+    <div class="stat-label">Unique Keywords</div>
+  </article>
+</section>
+
+<div class="dashboard-grid">
+  <div>
+    <h2>Recent Debates</h2>
+    {% if recent_debates %}
+    <div>
+      {% for debate in recent_debates[:10] %}
+      <div class="recent-debate-item">
+        <a href="/debate/{{ debate.youtube_id }}">{{ debate.title }}</a>
+        <span class="recent-debate-date">{{ debate.created_at.strftime("%b %d, %Y") }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p>No analyzed debates yet.</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <h2>Top Keywords</h2>
+    {% if top_keywords %}
+    {% set max_count = top_keywords[0][1] if top_keywords else 1 %}
+    <div>
+      {% for phrase, count in top_keywords %}
+      <div class="keyword-bar-row">
+        <span class="keyword-bar-label" title="{{ phrase }}">{{ phrase }}</span>
+        <div class="keyword-bar-track">
+          <div class="keyword-bar-fill" style="width: {{ (count / max_count * 100)|round }}%"></div>
+        </div>
+        <span class="keyword-bar-count">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p>No keywords found.</p>
+    {% endif %}
+
+    <h2>Topic Frequency</h2>
+    {% if topic_freq %}
+    <ul class="topic-freq-list">
+      {% for name, count in topic_freq %}
+      <li class="topic-freq-item">
+        <a href="/patterns/topic/{{ name | urlencode }}">{{ name }}</a>
+        <span class="topic-freq-count">{{ count }} debate{{ "s" if count != 1 else "" }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No topics found.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

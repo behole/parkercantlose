@@ -1,0 +1,58 @@
+<article id="topic-{{ topic.id }}">
+  <header>
+    <strong>{{ topic.name }}</strong>
+    {% if topic.status == "suggested" %}
+    <small style="color: #b59f3b; margin-left: 0.5rem;">[suggested]</small>
+    {% elif topic.status == "accepted" %}
+    <small style="color: #2e7d32; margin-left: 0.5rem;">[accepted]</small>
+    {% elif topic.status == "renamed" %}
+    <small style="color: #1565c0; margin-left: 0.5rem;">[renamed]</small>
+    {% elif topic.status == "merged" %}
+    <small style="color: #6a1b9a; margin-left: 0.5rem;">[merged]</small>
+    {% endif %}
+  </header>
+
+  {% if topic.description %}
+  <p>{{ topic.description }}</p>
+  {% endif %}
+
+  {% if stances %}
+  <table role="grid">
+    <thead>
+      <tr>
+        <th>Speaker</th>
+        <th>Stance</th>
+        <th>Confidence</th>
+        <th>Evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stance in stances %}
+        {% include "partials/stance_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if topic.status == "suggested" %}
+  <footer>
+    <div role="group">
+      <button hx-post="/api/topics/{{ topic.id }}/accept"
+              hx-target="#topic-{{ topic.id }}"
+              hx-swap="outerHTML">Accept</button>
+      <button hx-post="/api/topics/{{ topic.id }}/reject"
+              hx-target="#topic-{{ topic.id }}"
+              hx-swap="outerHTML"
+              class="secondary">Reject</button>
+    </div>
+    <form hx-post="/api/topics/{{ topic.id }}/rename"
+          hx-target="#topic-{{ topic.id }}"
+          hx-swap="outerHTML"
+          style="display: inline-flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+      <input type="text" name="name" placeholder="New name..." required
+             style="margin-bottom: 0; max-width: 200px;">
+      <button type="submit" class="outline">Rename</button>
+    </form>
+  </footer>
+  {% endif %}
+</article>

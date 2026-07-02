@@ -1,0 +1,33 @@
+<article id="match-{{ item.match.id }}">
+  <header>
+    <strong>{{ "%.0f" | format(item.match.similarity * 100) }}% match</strong>
+    {% if item.match.status == "confirmed" %}
+    <small style="color: #2e7d32; margin-left: 0.5rem;">[confirmed]</small>
+    {% endif %}
+  </header>
+
+  <div class="grid">
+    <div>
+      <h6>{{ item.topic_a.name if item.topic_a else 'Unknown topic' }}</h6>
+      <small>From: {{ item.debate_a.title if item.debate_a else 'Unknown debate' }}</small>
+    </div>
+    <div>
+      <h6>{{ item.topic_b.name if item.topic_b else 'Unknown topic' }}</h6>
+      <small>From: {{ item.debate_b.title if item.debate_b else 'Unknown debate' }}</small>
+    </div>
+  </div>
+
+  {% if item.match.status == "suggested" %}
+  <footer>
+    <div role="group">
+      <button hx-post="/api/topic-matches/{{ item.match.id }}/confirm"
+              hx-target="#match-{{ item.match.id }}"
+              hx-swap="outerHTML">Confirm</button>
+      <button hx-post="/api/topic-matches/{{ item.match.id }}/reject"
+              hx-target="#match-{{ item.match.id }}"
+              hx-swap="outerHTML"
+              class="secondary">Reject</button>
+    </div>
+  </footer>
+  {% endif %}
+</article>

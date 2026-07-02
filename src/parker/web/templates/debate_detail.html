@@ -1,0 +1,157 @@
+{% extends "public_base.html" %}
+{% block title %}{{ debate.title }} - Parker Debate Dashboard{% endblock %}
+{% block og_title %}{{ debate.title }}{% endblock %}
+{% block og_description %}Explore topics, stances, and key quotes from this debate.{% endblock %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/">Home</a></li>
+    <li>{{ debate.title }}</li>
+  </ul>
+</nav>
+
+<section class="debate-header">
+  <h1>{{ debate.title }}</h1>
+  <div class="debate-meta">
+    {% if debate.upload_date %}
+    <span>{{ debate.upload_date[:4] }}-{{ debate.upload_date[4:6] }}-{{ debate.upload_date[6:8] }}</span>
+    {% endif %}
+    {% if debate.duration_seconds %}
+    <span>{{ debate.duration_seconds // 60 }} min {{ debate.duration_seconds % 60 }}s</span>
+    {% endif %}
+  </div>
+  <div class="debate-embed">
+    <iframe
+      src="https://www.youtube.com/embed/{{ youtube_id }}"
+      title="{{ debate.title }}"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+  </div>
+</section>
+
+{% if topics %}
+<section>
+  <h2>Topics &amp; Stances</h2>
+  {% for topic in topics %}
+  <article style="margin-bottom: 1.5rem;">
+    <h3>{{ topic.name }}</h3>
+    {% if topic.description %}
+    <p style="color: var(--pico-muted-color); margin-bottom: 0.5rem;">{{ topic.description }}</p>
+    {% endif %}
+
+    {% set topic_stances = stances_by_topic.get(topic.id, []) %}
+    {% set parker_s = topic_stances | selectattr('speaker', 'equalto', 'parker') | list %}
+    {% set caller_s = topic_stances | selectattr('speaker', 'equalto', 'caller') | list %}
+
+    <div class="stance-comparison">
+      <div class="stance-card">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <span class="speaker-badge speaker-parker" style="cursor: default;">PARKER</span>
+        </h4>
+        {% for stance in parker_s %}
+        <span class="stance-label {{ stance.label | lower }}">{{ stance.label }}</span>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-bar {{ stance.label | lower }}" style="width: {{ "%.0f" | format(stance.confidence * 100) }}%"></div>
+        </div>
+        <span style="font-size: 0.8rem; color: var(--pico-muted-color);">{{ "%.0f" | format(stance.confidence * 100) }}% confidence</span>
+        {% if stance.evidence %}
+        <p class="stance-evidence">{{ stance.evidence }}</p>
+        {% endif %}
+        {% else %}
+        <p style="color: var(--pico-muted-color); font-size: 0.9rem;">No stance recorded</p>
+        {% endfor %}
+      </div>
+
+      <div class="stance-card">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <span class="speaker-badge speaker-caller" style="cursor: default;">CALLER</span>
+        </h4>
+        {% for stance in caller_s %}
+        <span class="stance-label {{ stance.label | lower }}">{{ stance.label }}</span>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-bar {{ stance.label | lower }}" style="width: {{ "%.0f" | format(stance.confidence * 100) }}%"></div>
+        </div>
+        <span style="font-size: 0.8rem; color: var(--pico-muted-color);">{{ "%.0f" | format(stance.confidence * 100) }}% confidence</span>
+        {% if stance.evidence %}
+        <p class="stance-evidence">{{ stance.evidence }}</p>
+        {% endif %}
+        {% else %}
+        <p style="color: var(--pico-muted-color); font-size: 0.9rem;">No stance recorded</p>
+        {% endfor %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if keywords %}
+<section class="keywords-section">
+  <h2>Key Phrases</h2>
+  <div class="keywords-grid">
+    <div>
+      <h4 style="margin-bottom: 0.5rem;">Parker</h4>
+      {% if parker_keywords %}
+      <ul class="keyword-list">
+        {% for kw in parker_keywords %}
+        <li><span>{{ kw.phrase }}</span> <span class="keyword-count">{{ kw.count }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="color: var(--pico-muted-color);">No keywords</p>
+      {% endif %}
+    </div>
+    <div>
+      <h4 style="margin-bottom: 0.5rem;">Caller</h4>
+      {% if caller_keywords %}
+      <ul class="keyword-list">
+        {% for kw in caller_keywords %}
+        <li><span>{{ kw.phrase }}</span> <span class="keyword-count">{{ kw.count }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="color: var(--pico-muted-color);">No keywords</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if utterances %}
+<section class="transcript-section">
+  <h2>Full Transcript</h2>
+  <div class="transcript-search">
+    <input type="text" id="transcript-search-input" placeholder="Search transcript..." oninput="filterTranscript(this.value)">
+  </div>
+  <div class="public-transcript" id="transcript-container">
+    {% for u in utterances %}
+    <div class="transcript-entry" data-text="{{ u.text | lower }}">
+      <span class="transcript-time">{{ '%d:%02d' % (u.start_time // 60, u.start_time % 60) }}</span>
+      <span class="speaker-badge speaker-{{ u.speaker }}">{{ u.speaker }}</span>
+      <span class="transcript-text">{{ u.text }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterTranscript(query) {
+  var entries = document.querySelectorAll('.transcript-entry');
+  var q = query.toLowerCase().trim();
+  entries.forEach(function(el) {
+    if (!q || el.dataset.text.includes(q)) {
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+</script>
+{% endblock %}
