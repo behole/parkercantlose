@@ -896,12 +896,23 @@ textarea:focus {
   margin-top: 0.5rem;
 }
 
-/* Sidebar layout */
+/* Sidebar layout — override old body styles */
+.layout-sidebar,
 .layout-sidebar {
   display: flex;
   min-height: 100vh;
   padding: 0;
   margin: 0;
+  background: var(--pico-background-color);
+}
+
+.layout-sidebar::before {
+  display: none;
+}
+
+body > header.container,
+body > footer.container {
+  display: none;
 }
 
 .sidebar {
