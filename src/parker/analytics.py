@@ -119,7 +119,9 @@ def detect_unlinked_guests(session: Session) -> list[Debate]:
     )
     if not caller_debate_ids:
         return []
-    caller_ids = set(r[0] for r in caller_debate_ids)
+    caller_ids = set(
+        r[0] if isinstance(r, (tuple,)) else r for r in caller_debate_ids
+    )
     return list(
         session.exec(
             select(Debate)
