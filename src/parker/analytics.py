@@ -8,6 +8,7 @@ from sqlmodel import func, select
 from parker.models import (
     Debate,
     Guest,
+    Keyword,
     ReviewStatus,
     Stance,
     Topic,
@@ -223,3 +224,136 @@ def get_cleanup_inbox(session: Session) -> dict:
         "unlinked_guests": detect_unlinked_guests(session),
         "anomalies": detect_anomalies(session),
     }
+
+
+def get_speaker_balance(session: Session) -> list[dict]:
+    rows = session.exec(
+        select(
+            Debate.youtube_id,
+            Debate.title,
+            Utterance.speaker,
+            func.count(Utterance.id).label("utterance_count"),
+            func.sum(Utterance.end_time - Utterance.start_time).label("speaking_time"),
+            func.sum(
+                func.length(Utterance.text)
+                - func.length(func.replace(Utterance.text, " ", ""))
+                + 1,
+            ).label("word_count"),
+        )
+        .join(Utterance, Utterance.debate_id == Debate.id)
+        .group_by(Debate.id, Utterance.speaker)
+        .order_by(Debate.upload_date, Utterance.speaker)
+    ).all()
+    result = []
+    for row in rows:
+        result.append({
+            "youtube_id": row[0],
+            "title": row[1],
+            "speaker": row[2],
+            "utterance_count": row[3],
+            "speaking_time": round(row[4] or 0, 0),
+            "word_count": row[5] or 0,
+        })
+    return result
+
+
+def get_stance_matrix(session: Session) -> list[dict]:
+    rows = session.exec(
+        select(
+            Topic.name,
+            Stance.speaker,
+            Stance.label,
+            func.count(Stance.id),
+        )
+        .join(Stance, Stance.topic_id == Topic.id)
+        .where(Topic.status != "rejected", Topic.status != "merged")
+        .group_by(Topic.name, Stance.speaker, Stance.label)
+        .order_by(Topic.name, Stance.speaker, Stance.label)
+    ).all()
+    result = []
+    for row in rows:
+        result.append({
+            "topic": row[0],
+            "speaker": row[1],
+            "label": row[2],
+            "count": row[3],
+        })
+    return result
+
+
+def get_stance_consistency(session: Session, speaker: str = "parker") -> list[dict]:
+    recurring = session.exec(
+        select(Topic.name, func.count(func.distinct(Topic.debate_id)).label("debates"))
+        .where(Topic.status != "rejected", Topic.status != "merged")
+        .group_by(Topic.name)
+        .having(func.count(func.distinct(Topic.debate_id)) > 1)
+        .order_by(func.count(func.distinct(Topic.debate_id)).desc())
+    ).all()
+    topic_names = [r[0] for r in recurring]
+    if not topic_names:
+        return []
+    rows = session.exec(
+        select(
+            Topic.name,
+            Debate.upload_date,
+            Stance.label,
+        )
+        .join(Stance, Stance.topic_id == Topic.id)
+        .join(Debate, Debate.id == Topic.debate_id)
+        .where(
+            Topic.name.in_(topic_names),
+            Stance.speaker == speaker,
+            Topic.status != "rejected",
+            Topic.status != "merged",
+        )
+        .order_by(Topic.name, Debate.upload_date)
+    ).all()
+    result = []
+    for row in rows:
+        result.append({
+            "topic": row[0],
+            "upload_date": row[1],
+            "label": row[2],
+        })
+    return result
+
+
+def get_keyword_comparison(session: Session, limit: int = 15) -> dict:
+    parker_rows = session.exec(
+        select(Keyword.phrase, func.sum(Keyword.count).label("total"))
+        .where(Keyword.speaker == "parker")
+        .group_by(Keyword.phrase)
+        .order_by(func.sum(Keyword.count).desc())
+        .limit(limit)
+    ).all()
+    caller_rows = session.exec(
+        select(Keyword.phrase, func.sum(Keyword.count).label("total"))
+        .where(Keyword.speaker == "caller")
+        .group_by(Keyword.phrase)
+        .order_by(func.sum(Keyword.count).desc())
+        .limit(limit)
+    ).all()
+    return {
+        "parker": [(r[0], r[1]) for r in parker_rows],
+        "caller": [(r[0], r[1]) for r in caller_rows],
+    }
+
+
+def get_confidence_distribution(session: Session) -> list[dict]:
+    rows = session.exec(
+        select(
+            Stance.label,
+            Stance.speaker,
+            Stance.confidence,
+        )
+        .distinct()
+        .order_by(Stance.label, Stance.speaker, Stance.confidence)
+    ).all()
+    result = []
+    for row in rows:
+        result.append({
+            "label": row[0],
+            "speaker": row[1],
+            "confidence": row[2],
+        })
+    return result

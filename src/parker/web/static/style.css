@@ -1164,3 +1164,32 @@ body > footer.container {
     grid-template-columns: 1fr;
   }
 }
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.analytics-card {
+  background: var(--pico-card-background-color);
+  border: 1px solid rgba(18, 58, 120, 0.16);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 14px 40px rgba(16, 35, 63, 0.08);
+}
+
+.analytics-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.analytics-card canvas {
+  max-height: 350px;
+}
+
+@media (max-width: 768px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}

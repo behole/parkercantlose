@@ -3,9 +3,14 @@ from fastapi.responses import HTMLResponse
 
 from parker import crud
 from parker.analytics import (
+    get_confidence_distribution,
     get_dashboard_stats,
     get_debate_timeline,
+    get_keyword_comparison,
     get_recent_activity,
+    get_speaker_balance,
+    get_stance_consistency,
+    get_stance_matrix,
     get_topic_frequency,
 )
 from parker.db import get_session
@@ -82,43 +87,29 @@ async def debate_detail(request: Request, youtube_id: str):
     )
 
 
-@router.get("/patterns", response_class=HTMLResponse)
-async def patterns_page(request: Request):
+@router.get("/analytics", response_class=HTMLResponse)
+async def analytics_page(request: Request):
     templates = _get_templates(request)
     engine = _get_engine(request)
     with get_session(engine) as session:
-        patterns = crud.get_cross_debate_patterns(session)
-        keyword_freq = crud.get_keyword_frequencies(session, speaker="parker")
-        top_keywords = keyword_freq[:20]
+        balance_data = get_speaker_balance(session)
+        stance_data = get_stance_matrix(session)
+        topic_freq = get_topic_frequency(session, limit=15)
+        consistency_data = get_stance_consistency(session)
+        keyword_data = get_keyword_comparison(session, limit=15)
+        confidence_data = get_confidence_distribution(session)
+    import json
+
     return templates.template_response(
-        "patterns.html",
+        "analytics.html",
         {
             "request": request,
-            "patterns": patterns,
-            "top_keywords": top_keywords,
-        },
-    )
-
-
-@router.get("/patterns/topic/{topic_name}", response_class=HTMLResponse)
-async def topic_drilldown(request: Request, topic_name: str):
-    templates = _get_templates(request)
-    engine = _get_engine(request)
-    with get_session(engine) as session:
-        results = crud.get_topic_stances_across_debates(session, topic_name)
-        debates_seen = []
-        seen_ids = set()
-        for r in results:
-            if r["debate_id"] not in seen_ids:
-                seen_ids.add(r["debate_id"])
-                debates_seen.append(r)
-    return templates.template_response(
-        "topic_drilldown.html",
-        {
-            "request": request,
-            "topic_name": topic_name,
-            "results": results,
-            "debates_seen": debates_seen,
+            "balance_json": json.dumps(balance_data),
+            "stance_json": json.dumps(stance_data),
+            "topic_freq_json": json.dumps(topic_freq),
+            "consistency_json": json.dumps(consistency_data),
+            "keyword_json": json.dumps(keyword_data),
+            "confidence_json": json.dumps(confidence_data),
         },
     )
 

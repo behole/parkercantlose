@@ -1,0 +1,259 @@
+{% extends "public_base.html" %}
+{% block title %}Analytics - Parker Debate Dashboard{% endblock %}
+{% block og_title %}Debate Analytics{% endblock %}
+{% block og_description %}Speaker comparisons, stance distributions, keyword analysis, and confidence metrics.{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>Analytics</h1>
+  <p>Speaker balance, stance patterns, keyword comparisons, and confidence metrics</p>
+</hgroup>
+
+{% if not balance_data %}
+<article><p>No analyzed data yet. Import and approve some debates first.</p></article>
+{% else %}
+
+<div class="analytics-grid">
+  <div class="analytics-card">
+    <h3>Speaker Balance</h3>
+    <canvas id="balanceChart"></canvas>
+  </div>
+  <div class="analytics-card">
+    <h3>Stance Heatmap</h3>
+    <canvas id="stanceChart"></canvas>
+  </div>
+  <div class="analytics-card">
+    <h3>Topic Frequency</h3>
+    <canvas id="topicChart"></canvas>
+  </div>
+  <div class="analytics-card">
+    <h3>Stance Consistency (Parker)</h3>
+    <canvas id="consistencyChart"></canvas>
+  </div>
+  <div class="analytics-card">
+    <h3>Keyword Comparison</h3>
+    <canvas id="keywordChart"></canvas>
+  </div>
+  <div class="analytics-card">
+    <h3>Confidence Arc</h3>
+    <canvas id="confidenceChart"></canvas>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if balance_data %}
+<script>
+(function() {
+  var balanceData = {{ balance_json | safe }};
+  var stanceData = {{ stance_json | safe }};
+  var topicData = {{ topic_freq_json | safe }};
+  var consistencyData = {{ consistency_json | safe }};
+  var keywordData = {{ keyword_json | safe }};
+  var confidenceData = {{ confidence_json | safe }};
+
+  // 1. Speaker Balance — stacked bar: word count per debate per speaker
+  var debateLabels = [];
+  var debateIds = new Set();
+  balanceData.forEach(function(d) { debateIds.add(d.youtube_id); });
+
+  var parkerCounts = [];
+  var callerCounts = [];
+  var debateSeen = [];
+  balanceData.forEach(function(d) {
+    if (!debateSeen.includes(d.youtube_id)) debateSeen.push(d.youtube_id);
+  });
+  debateSeen.forEach(function(yid) {
+    var p = balanceData.find(function(d) { return d.youtube_id === yid && d.speaker === 'parker'; });
+    var c = balanceData.find(function(d) { return d.youtube_id === yid && d.speaker === 'caller'; });
+    var title = (p || c).title;
+    debateLabels.push(title.length > 30 ? title.substring(0,27)+'...' : title);
+    parkerCounts.push(p ? p.utterance_count : 0);
+    callerCounts.push(c ? c.utterance_count : 0);
+  });
+
+  new Chart(document.getElementById('balanceChart'), {
+    type: 'bar',
+    data: {
+      labels: debateLabels,
+      datasets: [
+        { label: 'Parker', data: parkerCounts, backgroundColor: '#123a78' },
+        { label: 'Caller', data: callerCounts, backgroundColor: '#bb133e' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: 'Utterances' } } }
+    }
+  });
+
+  // 2. Stance Heatmap — grouped bar: topic × speaker, SUPPORTS/OPPOSES/QUALIFIED/DEFLECTS
+  var topics = [];
+  var topicMap = {};
+  stanceData.forEach(function(d) {
+    if (!topicMap[d.topic]) { topicMap[d.topic] = true; topics.push(d.topic); }
+  });
+  topics.sort();
+
+  var speakers = ['parker', 'caller'];
+  var labels = ['SUPPORTS', 'OPPOSES', 'QUALIFIED', 'DEFLECTS'];
+  var colors = { SUPPORTS: '#123a78', OPPOSES: '#bb133e', QUALIFIED: '#f59e0b', DEFLECTS: '#63748e' };
+
+  var stanceDatasets = [];
+  labels.forEach(function(lbl) {
+    speakers.forEach(function(spk) {
+      stanceDatasets.push({
+        label: spk === 'parker' ? 'P:'+lbl : 'C:'+lbl,
+        data: topics.map(function(t) {
+          var match = stanceData.find(function(d) { return d.topic === t && d.speaker === spk && d.label === lbl; });
+          return match ? match.count : 0;
+        }),
+        backgroundColor: colors[lbl],
+        borderColor: colors[lbl],
+        borderWidth: spk === 'parker' ? 3 : 0,
+        borderDash: spk === 'caller' ? [4,2] : [],
+        borderRadius: spk === 'parker' ? 0 : 0,
+      });
+    });
+  });
+
+  new Chart(document.getElementById('stanceChart'), {
+    type: 'bar',
+    data: { labels: topics, datasets: stanceDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
+      scales: { y: { stacked: false, ticks: { stepSize: 1 } } }
+    }
+  });
+
+  // 3. Topic Frequency — horizontal bar (reuse from dashboard)
+  new Chart(document.getElementById('topicChart'), {
+    type: 'bar',
+    data: {
+      labels: topicData.map(function(d) { return d[0]; }),
+      datasets: [{ label: 'Debates', data: topicData.map(function(d) { return d[1]; }), backgroundColor: '#123a78' }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { stepSize: 1 } } }
+    }
+  });
+
+  // 4. Stance Consistency — line chart: parker's SUPPORTS % per topic over time
+  var consistencyTopics = [];
+  var cMap = {};
+  consistencyData.forEach(function(d) {
+    if (!cMap[d.topic]) { cMap[d.topic] = []; consistencyTopics.push(d.topic); }
+    cMap[d.topic].push(d);
+  });
+
+  var labelsLc = { SUPPORTS: 'rgb(18, 58, 120)', OPPOSES: 'rgb(187, 19, 62)', QUALIFIED: 'rgb(245, 158, 11)', DEFLECTS: 'rgb(99, 116, 142)' };
+
+  // Build one dataset per topic showing stance label over time
+  var consistencyDatasets = consistencyTopics.map(function(topic, i) {
+    var pts = cMap[topic];
+    pts.sort(function(a,b) { return (a.upload_date||'').localeCompare(b.upload_date||''); });
+    return {
+      label: topic.length > 25 ? topic.substring(0,22)+'...' : topic,
+      data: pts.map(function(p, idx) { return { x: idx, y: p.label }; }),
+      borderColor: ['#123a78','#bb133e','#f59e0b','#63748e','#0ea5e9','#8b5cf6','#10b981'][i % 7],
+      backgroundColor: 'transparent',
+      tension: 0.5,
+      pointRadius: 6,
+    };
+  });
+
+  new Chart(document.getElementById('consistencyChart'), {
+    type: 'line',
+    data: { labels: ['1st','2nd','3rd','4th','5th','6th','7th'], datasets: consistencyDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return consistencyTopics[ctx.datasetIndex] + ': ' + consistencyData.find(function(d){ return d.topic === consistencyTopics[ctx.datasetIndex]; })[ctx.dataIndex].label; }
+          }
+        }
+      },
+      scales: {
+        y: {
+          type: 'category',
+          labels: ['SUPPORTS', 'QUALIFIED', 'OPPOSES', 'DEFLECTS'],
+          title: { display: true, text: 'Stance' }
+        },
+        x: { title: { display: true, text: 'Appearance order' } }
+      }
+    }
+  });
+
+  // 5. Keyword Comparison — horizontal bar, side by side comparison
+  var kwLabels = ['Parker', 'Caller'];
+  new Chart(document.getElementById('keywordChart'), {
+    type: 'bar',
+    data: {
+      labels: keywordData.parker.map(function(d,i) { return (d[0] || 'n/a').length > 20 ? (d[0]||'n/a').substring(0,17)+'...' : (d[0]||'n/a'); }),
+      datasets: [
+        { label: 'Parker', data: keywordData.parker.map(function(d){ return d[1]; }), backgroundColor: '#123a78' },
+        { label: 'Caller', data: keywordData.caller.map(function(d){ return d[1]; }), backgroundColor: '#bb133e' }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: { x: { ticks: { stepSize: 1 }, stacked: false } }
+    }
+  });
+
+  // 6. Confidence Arc — scatter plot per stance label per speaker
+  var confColors = { SUPPORTS: '#123a78', OPPOSES: '#bb133e', QUALIFIED: '#f59e0b', DEFLECTS: '#63748e' };
+  var confPts = {};
+  confidenceData.forEach(function(d) {
+    var key = d.speaker + ' ' + d.label;
+    if (!confPts[key]) confPts[key] = [];
+    confPts[key].push({ x: confPts[key].length, y: d.confidence });
+  });
+  var confDatasets = Object.keys(confPts).map(function(key) {
+    var parts = key.split(' ');
+    return {
+      label: (parts[0] === 'parker' ? 'P:' : 'C:') + parts[1],
+      data: confPts[key],
+      backgroundColor: confColors[parts[1]] || '#888',
+      borderColor: confColors[parts[1]] || '#888',
+      pointRadius: 5,
+      showLine: false,
+    };
+  });
+
+  new Chart(document.getElementById('confidenceChart'), {
+    type: 'scatter',
+    data: { datasets: confDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+      scales: {
+        y: { min: 0, max: 1, title: { display: true, text: 'Confidence' } },
+        x: { title: { display: true, text: 'Stance occurrences' } }
+      }
+    }
+  });
+
+})();
+</script>
+{% endif %}
+{% endblock %}
