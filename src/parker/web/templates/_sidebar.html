@@ -9,11 +9,6 @@
     <li><a href="/patterns" class="{% if current == '/patterns' %}active{% endif %}">Patterns</a></li>
     <li><a href="/search" class="{% if current == '/search' %}active{% endif %}">Search</a></li>
   </ul>
-  {% if cleanup_count is defined and cleanup_count > 0 %}
-  <div class="sidebar-alert">
-    <a href="/admin/cleanup">Cleanup: {{ cleanup_count }} items</a>
-  </div>
-  {% endif %}
   <div class="sidebar-footer">
     <a href="/admin/videos">Admin</a>
   </div>

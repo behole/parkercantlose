@@ -40,24 +40,7 @@
   </div>
 </div>
 
-<div class="info-row">
-  <div class="info-card">
-    <h3>Cleanup Status</h3>
-    {% if cleanup_count is defined and cleanup_count > 0 %}
-    <p>{{ cleanup_count }} items need attention.</p>
-    <a href="/admin/cleanup" role="button" class="contrast">Review Cleanup</a>
-    {% else %}
-    <p>All clean.</p>
-    {% endif %}
-    {% if cleanup_anomalies is defined %}
-    <ul style="margin-top:0.5rem;font-size:0.85rem">
-      <li>{{ cleanup_anomalies.failed_pipelines }} failed pipeline runs</li>
-      <li>{{ cleanup_anomalies.unreviewed_count }} unreviewed debates</li>
-      <li>{{ cleanup_anomalies.empty_transcripts }} debates with no utterances</li>
-    </ul>
-    {% endif %}
-  </div>
-  <div class="info-card">
+<div class="info-card">
     <h3>Recent Activity</h3>
     {% if recent_activity %}
     {% for act in recent_activity %}
