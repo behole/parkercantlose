@@ -104,6 +104,7 @@ async def analytics_page(request: Request):
         "analytics.html",
         {
             "request": request,
+            "balance_data": balance_data,
             "balance_json": json.dumps(balance_data),
             "stance_json": json.dumps(stance_data),
             "topic_freq_json": json.dumps(topic_freq),
