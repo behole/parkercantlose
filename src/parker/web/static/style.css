@@ -924,6 +924,10 @@ body > footer.container {
   padding: 1rem 0;
   flex-shrink: 0;
   overflow-x: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
 }
 
 .sidebar > * {
@@ -1010,6 +1014,7 @@ body > footer.container {
   overflow-y: auto;
   min-width: 0;
   max-width: 100%;
+  margin-left: 220px;
 }
 
 /* Dashboard KPI cards */
@@ -1141,6 +1146,8 @@ body > footer.container {
     flex-direction: row;
     overflow-x: auto;
     padding: 0.5rem;
+    position: static;
+    height: auto;
   }
   .sidebar-nav {
     display: flex;
@@ -1151,6 +1158,7 @@ body > footer.container {
   }
   .main-content {
     padding: 1rem;
+    margin-left: 0;
   }
   .chart-row, .info-row {
     grid-template-columns: 1fr;
