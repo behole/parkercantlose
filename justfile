@@ -2,39 +2,39 @@ set dotenv-load
 
 # Process a single YouTube video
 process url:
-    python -m parker.cli process "{{url}}"
+    .venv/bin/python -m parker.cli process "{{url}}"
 
 # Import transcript directly from YouTube (fast, no WhisperX)
 import-yt url:
-    python -m parker.cli import-yt "{{url}}"
+    .venv/bin/python -m parker.cli import-yt "{{url}}"
 
 # Process multiple videos from a file (one URL per line)
 batch-process file:
-    python -m parker.cli batch "{{file}}"
+    .venv/bin/python -m parker.cli batch "{{file}}"
 
 # Show pipeline status
 status:
-    python -m parker.cli status
+    .venv/bin/python -m parker.cli status
 
 # Retry all failed videos
 retry-failed:
-    python -m parker.cli retry
+    .venv/bin/python -m parker.cli retry
 
 # Run tests
 test:
-    python -m pytest -xvs
+    .venv/bin/python -m pytest -xvs
 
 # Run linter
 lint:
-    ruff check src/ tests/
+    .venv/bin/ruff check src/ tests/
 
 # Format check
 fmt:
-    ruff format --check src/ tests/
+    .venv/bin/ruff format --check src/ tests/
 
 # Format fix
 fmt-fix:
-    ruff format src/ tests/
+    .venv/bin/ruff format src/ tests/
 
 # Start the web interface
 serve:
