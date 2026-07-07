@@ -924,6 +924,10 @@ body > footer.container {
   flex-shrink: 0;
 }
 
+.sidebar > * {
+  width: 100%;
+}
+
 .sidebar-brand {
   padding: 0 1rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
@@ -941,6 +945,11 @@ body > footer.container {
   padding: 0;
   margin: 0;
   flex: 1;
+  display: block;
+}
+
+.sidebar-nav li {
+  display: block;
 }
 
 .sidebar-nav li a {
