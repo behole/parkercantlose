@@ -8,6 +8,7 @@
   <thead>
     <tr>
       <th>Title</th>
+      <th>Date</th>
       <th>Review Status</th>
       <th>Edits</th>
       <th>Action</th>
@@ -16,7 +17,11 @@
   <tbody>
     {% for debate in debates %}
     <tr>
-      <td>{{ debate.title }}</td>
+      <td>
+        {{ debate.title }}
+        <br><small style="color:var(--pico-muted-color)">{{ debate.youtube_id }}</small>
+      </td>
+      <td>{{ debate.upload_date or '—' }}</td>
       <td>
         {% include "partials/status_badge.html" with context %}
       </td>
