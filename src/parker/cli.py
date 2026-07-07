@@ -282,13 +282,28 @@ def import_youtube(
 
     # Fetch metadata from YouTube oembed
     typer.echo(f"Fetching metadata for {youtube_id}...")
-    oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={youtube_id}&format=json"
+    title = youtube_id
+    upload_date = None
+    duration_seconds = None
     try:
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={youtube_id}&format=json"
         with urllib.request.urlopen(oembed_url, timeout=10) as resp:
             meta = __import__("json").loads(resp.read().decode())
             title = meta.get("title", youtube_id)
     except Exception:
-        title = youtube_id
+        pass
+
+    # Fetch upload date + duration via yt-dlp (metadata only, no download)
+    try:
+        import yt_dlp
+
+        ydl_opts = {"quiet": True, "no_warnings": True, "extract_flat": "drop"}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            upload_date = info.get("upload_date")
+            duration_seconds = info.get("duration")
+    except Exception:
+        pass
 
     # Fetch transcript from YouTube
     typer.echo("Fetching transcript from YouTube...")
@@ -349,7 +364,15 @@ def import_youtube(
                 youtube_id=youtube_id,
                 title=title,
                 url=f"https://www.youtube.com/watch?v={youtube_id}",
+                duration_seconds=duration_seconds,
+                upload_date=upload_date,
             )
+        elif upload_date and not debate.upload_date:
+            # Backfill metadata on existing imports
+            debate.upload_date = upload_date
+            debate.duration_seconds = duration_seconds
+            session.add(debate)
+            session.commit()
         clear_utterances_for_debate(session, debate.id)
         for u in utterances_data:
             session.add(Utterance(
