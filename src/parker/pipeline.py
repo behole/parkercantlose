@@ -262,6 +262,21 @@ def analyze_debate(engine, youtube_id: str, settings=None, force: bool = False):
             len(analysis.keywords),
             len(analysis.stances),
         )
+
+        try:
+            from parker.analytics import auto_link_guests, auto_merge_topics
+
+            merged = auto_merge_topics(session, threshold=0.95)
+            linked = auto_link_guests(session)
+            if merged or linked:
+                logger.info(
+                    "Post-analysis cleanup: merged %d topics, linked %d guests",
+                    merged,
+                    linked,
+                )
+        except Exception as cleanup_err:
+            logger.warning("Post-analysis cleanup failed (non-fatal): %s", cleanup_err)
+
         return result
 
 

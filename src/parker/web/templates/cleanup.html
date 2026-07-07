@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Cleanup — Parker Admin{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>Data Cleanup</h1>
+  <p>Review and resolve duplicate topics, unlinked guests, and anomalies</p>
+</hgroup>
+
+<div class="cleanup-summary">
+  <form method="post" action="/admin/cleanup/run" style="display:inline">
+    <button type="submit">Run Auto-Cleanup</button>
+  </form>
+  {% if auto_result %}
+  <p style="margin-top:0.5rem">Last auto-cleanup: merged {{ auto_result.merged }} topics, linked {{ auto_result.linked }} guests.</p>
+  {% endif %}
+</div>
+
+<div class="cleanup-section">
+  <h2>Duplicate Topics ({{ ambiguous_topics|length }})</h2>
+  {% if ambiguous_topics %}
+  <table>
+    <thead>
+      <tr>
+        <th>Topic A</th>
+        <th>Topic B</th>
+        <th>Similarity</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for match in ambiguous_topics %}
+      {% set topic_a = topics_by_id.get(match.topic_a_id) %}
+      {% set topic_b = topics_by_id.get(match.topic_b_id) %}
+      <tr>
+        <td>{{ topic_a.name if topic_a else '?' }}</td>
+        <td>{{ topic_b.name if topic_b else '?' }}</td>
+        <td>{{ "%.2f"|format(match.similarity) }}</td>
+        <td>
+          <form method="post" action="/admin/cleanup/merge/{{ match.id }}" style="display:inline">
+            <button type="submit" class="outline">Merge</button>
+          </form>
+          <form method="post" action="/admin/cleanup/reject/{{ match.id }}" style="display:inline">
+            <button type="submit" class="outline secondary">Reject</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No ambiguous topic matches.</p>
+  {% endif %}
+</div>
+
+<div class="cleanup-section">
+  <h2>Unlinked Guests ({{ unlinked_guests|length }})</h2>
+  {% if unlinked_guests %}
+  <table>
+    <thead>
+      <tr>
+        <th>Debate</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for debate in unlinked_guests %}
+      <tr>
+        <td><a href="/admin/videos/{{ debate.youtube_id }}/review">{{ debate.title }}</a></td>
+        <td>{{ debate.upload_date or '-' }}</td>
+        <td>
+          <form method="post" action="/admin/cleanup/link-guest/{{ debate.id }}" style="display:inline">
+            <select name="guest_id">
+              <option value="">Select guest...</option>
+              {% for guest in all_guests %}
+              <option value="{{ guest.id }}">{{ guest.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit">Link</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No unlinked guests.</p>
+  {% endif %}
+</div>
+
+<div class="cleanup-section">
+  <h2>Anomalies</h2>
+  <ul>
+    <li>{{ anomalies.failed_pipelines }} failed pipeline runs</li>
+    <li>{{ anomalies.empty_transcripts }} debates with zero utterances</li>
+    <li>{{ anomalies.unreviewed_count }} unreviewed completed debates</li>
+  </ul>
+</div>
+{% endblock %}

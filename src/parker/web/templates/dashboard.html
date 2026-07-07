@@ -1,78 +1,134 @@
 {% extends "public_base.html" %}
 {% block title %}Parker Debate Dashboard{% endblock %}
 {% block og_title %}Parker Debate Dashboard{% endblock %}
-{% block og_description %}Explore {{ stats.total_debates }} analyzed debates with {{ stats.total_topics }} topics and {{ stats.total_keywords }} keywords.{% endblock %}
+{% block og_description %}{{ stats.total_debates }} debates analyzed, {{ stats.total_hours }} hours of content.{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
 
 {% block content %}
 <hgroup>
-  <h1>Debate Dashboard</h1>
-  <p>Explore topics, keywords, and patterns across analyzed debates</p>
+  <h1>Dashboard</h1>
+  <p>Overview of all analyzed Parker debates</p>
 </hgroup>
 
-<section class="stats-grid">
-  <article class="stat-card">
-    <div class="stat-number">{{ stats.total_debates }}</div>
-    <div class="stat-label">Debates Analyzed</div>
-  </article>
-  <article class="stat-card">
-    <div class="stat-number">{{ stats.total_topics }}</div>
-    <div class="stat-label">Unique Topics</div>
-  </article>
-  <article class="stat-card">
-    <div class="stat-number">{{ stats.total_keywords }}</div>
-    <div class="stat-label">Unique Keywords</div>
-  </article>
-</section>
-
-<div class="dashboard-grid">
-  <div>
-    <h2>Recent Debates</h2>
-    {% if recent_debates %}
-    <div>
-      {% for debate in recent_debates[:10] %}
-      <div class="recent-debate-item">
-        <a href="/debate/{{ debate.youtube_id }}">{{ debate.title }}</a>
-        <span class="recent-debate-date">{{ debate.created_at.strftime("%b %d, %Y") }}</span>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p>No analyzed debates yet.</p>
+<div class="dashboard-kpis">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ stats.total_debates }}</div>
+    <div class="kpi-label">Debates</div>
+    <div class="kpi-sub">{{ stats.approved_count }} approved</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ stats.total_hours }}</div>
+    <div class="kpi-label">Content Hours</div>
+    {% if stats.total_debates > 0 %}
+    <div class="kpi-sub">{{ "%.1f"|format(stats.total_hours / stats.total_debates) }}h avg</div>
     {% endif %}
   </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ stats.completion_pct }}%</div>
+    <div class="kpi-label">Complete</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">{{ stats.unique_guests }}</div>
+    <div class="kpi-label">Guests</div>
+  </div>
+</div>
 
-  <div>
-    <h2>Top Keywords</h2>
-    {% if top_keywords %}
-    {% set max_count = top_keywords[0][1] if top_keywords else 1 %}
-    <div>
-      {% for phrase, count in top_keywords %}
-      <div class="keyword-bar-row">
-        <span class="keyword-bar-label" title="{{ phrase }}">{{ phrase }}</span>
-        <div class="keyword-bar-track">
-          <div class="keyword-bar-fill" style="width: {{ (count / max_count * 100)|round }}%"></div>
-        </div>
-        <span class="keyword-bar-count">{{ count }}</span>
-      </div>
-      {% endfor %}
-    </div>
+<div class="chart-row">
+  <div class="chart-card">
+    <h3>Top Topics</h3>
+    <canvas id="topicChart"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>Debates Over Time</h3>
+    <canvas id="timelineChart"></canvas>
+  </div>
+</div>
+
+<div class="info-row">
+  <div class="info-card">
+    <h3>Cleanup Status</h3>
+    {% if cleanup_count is defined and cleanup_count > 0 %}
+    <p>{{ cleanup_count }} items need attention.</p>
+    <a href="/admin/cleanup" role="button" class="contrast">Review Cleanup</a>
     {% else %}
-    <p>No keywords found.</p>
+    <p>All clean.</p>
     {% endif %}
-
-    <h2>Topic Frequency</h2>
-    {% if topic_freq %}
-    <ul class="topic-freq-list">
-      {% for name, count in topic_freq %}
-      <li class="topic-freq-item">
-        <a href="/patterns/topic/{{ name | urlencode }}">{{ name }}</a>
-        <span class="topic-freq-count">{{ count }} debate{{ "s" if count != 1 else "" }}</span>
-      </li>
-      {% endfor %}
+    {% if cleanup_anomalies is defined %}
+    <ul style="margin-top:0.5rem;font-size:0.85rem">
+      <li>{{ cleanup_anomalies.failed_pipelines }} failed pipeline runs</li>
+      <li>{{ cleanup_anomalies.unreviewed_count }} unreviewed debates</li>
+      <li>{{ cleanup_anomalies.empty_transcripts }} debates with no utterances</li>
     </ul>
+    {% endif %}
+  </div>
+  <div class="info-card">
+    <h3>Recent Activity</h3>
+    {% if recent_activity %}
+    {% for act in recent_activity %}
+    <div class="activity-item">
+      <span class="activity-time">{{ act.status }}</span>
+      &mdash; <a href="/debate/{{ act.youtube_id }}">{{ act.title }}</a>
+    </div>
+    {% endfor %}
     {% else %}
-    <p>No topics found.</p>
+    <p>No activity yet.</p>
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var topicData = {{ topic_freq_json | safe }};
+  var timelineData = {{ timeline_json | safe }};
+
+  new Chart(document.getElementById('topicChart'), {
+    type: 'bar',
+    data: {
+      labels: topicData.map(function(d) { return d[0]; }),
+      datasets: [{
+        label: 'Debate Count',
+        data: topicData.map(function(d) { return d[1]; }),
+        backgroundColor: '#123a78'
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { stepSize: 1 } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: {
+      labels: timelineData.map(function(d) { return d[0]; }),
+      datasets: [{
+        label: 'Debates',
+        data: timelineData.map(function(d) { return d[1]; }),
+        borderColor: '#bb133e',
+        backgroundColor: 'rgba(187, 19, 62, 0.1)',
+        fill: true,
+        tension: 0.2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

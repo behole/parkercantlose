@@ -2,6 +2,14 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from parker import crud
+from parker.analytics import (
+    detect_anomalies,
+    get_cleanup_inbox,
+    get_dashboard_stats,
+    get_debate_timeline,
+    get_recent_activity,
+    get_topic_frequency,
+)
 from parker.db import get_session
 
 router = APIRouter()
@@ -15,23 +23,36 @@ def _get_templates(request: Request):
     return request.app.state.templates
 
 
+def _get_cleanup_count(request: Request) -> int:
+    engine = _get_engine(request)
+    with get_session(engine) as session:
+        inbox = get_cleanup_inbox(session)
+    return len(inbox["ambiguous_topics"]) + len(inbox["unlinked_guests"])
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     templates = _get_templates(request)
     engine = _get_engine(request)
     with get_session(engine) as session:
-        stats = crud.get_dashboard_stats(session)
-        recent_debates = crud.get_public_debates(session)
-        top_keywords = crud.get_keyword_frequencies(session)[:20]
-        topic_freq = crud.get_topic_frequency(session)
+        stats = get_dashboard_stats(session)
+        topic_freq = get_topic_frequency(session, limit=10)
+        timeline = get_debate_timeline(session)
+        recent_activity = get_recent_activity(session, limit=6)
+        inbox = get_cleanup_inbox(session)
+        anomalies = detect_anomalies(session)
+    import json
+
     return templates.template_response(
         "dashboard.html",
         {
             "request": request,
             "stats": stats,
-            "recent_debates": recent_debates,
-            "top_keywords": top_keywords,
-            "topic_freq": topic_freq,
+            "topic_freq_json": json.dumps(topic_freq),
+            "timeline_json": json.dumps(timeline),
+            "recent_activity": recent_activity,
+            "cleanup_count": len(inbox["ambiguous_topics"]) + len(inbox["unlinked_guests"]),
+            "cleanup_anomalies": anomalies,
         },
     )
 
@@ -70,6 +91,7 @@ async def debate_detail(request: Request, youtube_id: str):
             "caller_keywords": caller_keywords,
             "keywords": keywords,
             "utterances": utterances,
+            "cleanup_count": _get_cleanup_count(request),
         },
     )
 
@@ -88,6 +110,7 @@ async def patterns_page(request: Request):
             "request": request,
             "patterns": patterns,
             "top_keywords": top_keywords,
+            "cleanup_count": _get_cleanup_count(request),
         },
     )
 
@@ -111,6 +134,7 @@ async def topic_drilldown(request: Request, topic_name: str):
             "topic_name": topic_name,
             "results": results,
             "debates_seen": debates_seen,
+            "cleanup_count": _get_cleanup_count(request),
         },
     )
 
@@ -160,6 +184,7 @@ async def debate_list(
                 "date_from": date_from,
                 "date_to": date_to,
             },
+            "cleanup_count": _get_cleanup_count(request),
         },
     )
 
@@ -198,6 +223,7 @@ async def debate_list_partial(
             "debates": debates,
             "debate_topics": debate_topics,
             "debate_stances": debate_stances,
+            "cleanup_count": _get_cleanup_count(request),
         },
     )
 
@@ -227,5 +253,6 @@ async def search_page(request: Request, q: str = ""):
             "query": q,
             "results": results,
             "debates_with_matches": debates_with_matches,
+            "cleanup_count": _get_cleanup_count(request),
         },
     )

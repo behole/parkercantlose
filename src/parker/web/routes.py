@@ -2,6 +2,18 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from parker import crud
+from parker.analytics import (
+    auto_link_guests,
+    auto_merge_topics,
+    detect_anomalies,
+    get_cleanup_inbox,
+)
+from parker.crud import (
+    get_all_guests,
+    link_debate_to_guest,
+    merge_topic_match,
+    reject_topic_match,
+)
 from parker.db import get_session
 from parker.models import Debate, Topic
 
@@ -285,3 +297,101 @@ async def reject_match(request: Request, match_id: int):
     with get_session(engine) as session:
         crud.update_topic_match_status(session, match_id, "rejected")
     return HTMLResponse("")
+
+
+# ---------------------------------------------------------------------------
+# Cleanup Routes
+# ---------------------------------------------------------------------------
+
+
+@router.get("/cleanup", response_class=HTMLResponse)
+async def cleanup_page(request: Request):
+    templates = _get_templates(request)
+    engine = _get_engine(request)
+    with get_session(engine) as session:
+        inbox = get_cleanup_inbox(session)
+        anomalies = detect_anomalies(session)
+        guests = get_all_guests(session)
+        topics_by_id: dict[int, Topic] = {}
+        for match in inbox["ambiguous_topics"]:
+            t_a = session.get(Topic, match.topic_a_id)
+            t_b = session.get(Topic, match.topic_b_id)
+            if t_a:
+                topics_by_id[t_a.id] = t_a
+            if t_b:
+                topics_by_id[t_b.id] = t_b
+    return templates.template_response(
+        "cleanup.html",
+        {
+            "request": request,
+            "ambiguous_topics": inbox["ambiguous_topics"],
+            "unlinked_guests": inbox["unlinked_guests"],
+            "anomalies": anomalies,
+            "all_guests": guests,
+            "topics_by_id": topics_by_id,
+        },
+    )
+
+
+@router.post("/cleanup/run", response_class=HTMLResponse)
+async def cleanup_run(request: Request):
+    templates = _get_templates(request)
+    engine = _get_engine(request)
+    with get_session(engine) as session:
+        merged = auto_merge_topics(session, threshold=0.95)
+        linked = auto_link_guests(session)
+
+        inbox = get_cleanup_inbox(session)
+        anomalies = detect_anomalies(session)
+        guests = get_all_guests(session)
+        topics_by_id: dict[int, Topic] = {}
+        for match in inbox["ambiguous_topics"]:
+            t_a = session.get(Topic, match.topic_a_id)
+            t_b = session.get(Topic, match.topic_b_id)
+            if t_a:
+                topics_by_id[t_a.id] = t_a
+            if t_b:
+                topics_by_id[t_b.id] = t_b
+    return templates.template_response(
+        "cleanup.html",
+        {
+            "request": request,
+            "ambiguous_topics": inbox["ambiguous_topics"],
+            "unlinked_guests": inbox["unlinked_guests"],
+            "anomalies": anomalies,
+            "all_guests": guests,
+            "topics_by_id": topics_by_id,
+            "auto_result": {"merged": merged, "linked": linked},
+        },
+    )
+
+
+@router.post("/cleanup/merge/{match_id}", response_class=HTMLResponse)
+async def cleanup_merge(request: Request, match_id: int):
+    engine = _get_engine(request)
+    with get_session(engine) as session:
+        merge_topic_match(session, match_id)
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/admin/cleanup", status_code=303)
+
+
+@router.post("/cleanup/reject/{match_id}", response_class=HTMLResponse)
+async def cleanup_reject(request: Request, match_id: int):
+    engine = _get_engine(request)
+    with get_session(engine) as session:
+        reject_topic_match(session, match_id)
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/admin/cleanup", status_code=303)
+
+
+@router.post("/cleanup/link-guest/{debate_id}", response_class=HTMLResponse)
+async def cleanup_link_guest(request: Request, debate_id: int):
+    from starlette.responses import RedirectResponse
+    engine = _get_engine(request)
+    form = await request.form()
+    guest_id_str = form.get("guest_id", "")
+    if not guest_id_str:
+        return RedirectResponse(url="/admin/cleanup", status_code=303)
+    with get_session(engine) as session:
+        link_debate_to_guest(session, debate_id, int(guest_id_str))
+    return RedirectResponse(url="/admin/cleanup", status_code=303)

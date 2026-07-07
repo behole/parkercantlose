@@ -111,6 +111,24 @@ def retry() -> None:
 
 
 @app.command()
+def cleanup() -> None:
+    """Run automatic data cleanup: merge duplicate topics, link guests."""
+    from parker.analytics import auto_link_guests, auto_merge_topics
+    from parker.db import get_session
+
+    settings = get_settings()
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+
+    with get_session(engine) as session:
+        merged = auto_merge_topics(session, threshold=0.95)
+        linked = auto_link_guests(session)
+
+    typer.echo(f"Merged {merged} topic(s)")
+    typer.echo(f"Linked {linked} guest(s)")
+
+
+@app.command()
 def analyze(
     youtube_id: str = typer.Option(None, "--youtube-id", help="Analyze a specific debate by YouTube ID"),
     all_debates: bool = typer.Option(False, "--all", help="Analyze all approved debates"),

@@ -31,3 +31,11 @@ fmt:
 # Format fix
 fmt-fix:
     ruff format src/ tests/
+
+# Start the web interface
+serve:
+    .venv/bin/python -m parker.cli serve
+
+# Start on all interfaces (for network access)
+serve-public:
+    .venv/bin/python -m parker.cli serve --host 0.0.0.0

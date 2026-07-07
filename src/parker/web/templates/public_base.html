@@ -12,24 +12,13 @@
     <meta property="og:type" content="website">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-  <header class="container">
-    <nav>
-      <ul><li><strong><a href="/">Parker Debates</a></strong></li></ul>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/debates">Debates</a></li>
-        <li><a href="/patterns">Patterns</a></li>
-        <li><a href="/search">Search</a></li>
-      </ul>
-    </nav>
-  </header>
-  <main class="container">
+<body class="layout-sidebar">
+  {% block sidebar %}
+    {% include "_sidebar.html" %}
+  {% endblock %}
+  <main class="main-content">
     {% block content %}{% endblock %}
   </main>
-  <footer class="container">
-    <small>Built from analyzed debate transcripts. Only approved, reviewed debates are shown.</small>
-  </footer>
   {% block scripts %}{% endblock %}
 </body>
 </html>

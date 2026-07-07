@@ -643,3 +643,44 @@ def search_utterances(session: Session, query: str, limit: int = 50) -> list[dic
         }
         for row in rows
     ]
+
+
+def merge_topic_match(session: Session, match_id: int) -> dict | None:
+    match = session.get(TopicMatch, match_id)
+    if match is None:
+        return None
+    topic_a = session.get(Topic, match.topic_a_id)
+    topic_b = session.get(Topic, match.topic_b_id)
+    if topic_a is None or topic_b is None:
+        return None
+    stances = session.exec(
+        select(Stance).where(Stance.topic_id == topic_b.id)
+    ).all()
+    for stance in stances:
+        stance.topic_id = topic_a.id
+        session.add(stance)
+    topic_b.merged_into_id = topic_a.id
+    topic_b.status = "merged"
+    session.add(topic_b)
+    match.status = "confirmed"
+    session.add(match)
+    session.commit()
+    return {
+        "merged_from": topic_b.name,
+        "merged_into": topic_a.name,
+        "stances_moved": len(stances),
+    }
+
+
+def reject_topic_match(session: Session, match_id: int) -> bool:
+    match = session.get(TopicMatch, match_id)
+    if match is None:
+        return False
+    match.status = "rejected"
+    session.add(match)
+    session.commit()
+    return True
+
+
+def get_debate_by_id(session: Session, debate_id: int) -> Debate | None:
+    return session.get(Debate, debate_id)

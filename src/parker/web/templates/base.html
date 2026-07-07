@@ -8,17 +8,22 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
-<body>
-  <header class="container">
-    <nav>
-      <ul><li><strong><a href="/admin/videos">Parker Debate Review</a></strong></li></ul>
-      <ul>
-        <li><a href="/admin/videos">Videos</a></li>
-        <li><a href="/admin/topic-matches">Topic Matches</a></li>
-      </ul>
-    </nav>
-  </header>
-  <main class="container">
+<body class="layout-sidebar">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <a href="/admin/videos"><strong>Admin</strong></a>
+    </div>
+    <ul class="sidebar-nav">
+      {% set current = request.url.path.rstrip('/') %}
+      <li><a href="/admin/videos" class="{% if current == '/admin/videos' %}active{% endif %}">Videos</a></li>
+      <li><a href="/admin/topic-matches" class="{% if current == '/admin/topic-matches' %}active{% endif %}">Topic Matches</a></li>
+      <li><a href="/admin/cleanup" class="{% if current == '/admin/cleanup' %}active{% endif %}">Cleanup</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <a href="/">Public</a>
+    </div>
+  </nav>
+  <main class="main-content">
     {% block content %}{% endblock %}
   </main>
   {% block scripts %}{% endblock %}
