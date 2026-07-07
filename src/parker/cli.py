@@ -255,6 +255,116 @@ def link_guest(
         typer.echo(f"Linked {youtube_id} → {guest.name}")
 
 
+@app.command(name="import-yt")
+def import_youtube(
+    url: str = typer.Argument(help="YouTube video URL"),
+) -> None:
+    """Import a transcript directly from YouTube (fast path, no WhisperX)."""
+    import urllib.request
+
+    from youtube_transcript_api import YouTubeTranscriptApi
+
+    from parker.crud import (
+        clear_utterances_for_debate,
+        create_debate,
+        get_debate_by_youtube_id,
+        update_debate_status,
+    )
+    from parker.download import extract_youtube_id
+    from parker.models import Utterance, VideoStatus
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+
+    youtube_id = extract_youtube_id(url)
+
+    # Fetch metadata from YouTube oembed
+    typer.echo(f"Fetching metadata for {youtube_id}...")
+    oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={youtube_id}&format=json"
+    try:
+        with urllib.request.urlopen(oembed_url, timeout=10) as resp:
+            meta = __import__("json").loads(resp.read().decode())
+            title = meta.get("title", youtube_id)
+    except Exception:
+        title = youtube_id
+
+    # Fetch transcript from YouTube
+    typer.echo("Fetching transcript from YouTube...")
+    try:
+        fetcher = YouTubeTranscriptApi()
+        transcript = fetcher.fetch(youtube_id)
+    except Exception as e:
+        typer.echo(f"Failed to fetch transcript: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"  Got {len(transcript)} segments")
+
+    # Merge segments into utterances at >> speaker-change markers
+    utterances_data = []
+    current_speaker = "parker"
+    current_texts = [transcript[0].text.strip()]
+    current_start = transcript[0].start
+
+    for seg in transcript[1:]:
+        text = seg.text.strip()
+        start = seg.start
+        if text.startswith(">>"):
+            # Flush current utterance
+            combined = " ".join(current_texts).strip()
+            if combined:
+                utterances_data.append({
+                    "speaker": current_speaker,
+                    "text": combined,
+                    "start_time": current_start,
+                    "end_time": start,
+                })
+            # Start new utterance
+            text = text.lstrip(">").strip()
+            current_speaker = "caller" if current_speaker == "parker" else "parker"
+            current_texts = [text] if text else []
+            current_start = start
+        else:
+            current_texts.append(text)
+
+    # Flush final utterance
+    combined = " ".join(current_texts).strip()
+    if combined:
+        utterances_data.append({
+            "speaker": current_speaker,
+            "text": combined,
+            "start_time": current_start,
+            "end_time": transcript[-1].start + transcript[-1].duration,
+        })
+
+    typer.echo(f"  Parsed into {len(utterances_data)} utterances")
+
+    # Store in DB
+    with get_session(engine) as session:
+        debate = get_debate_by_youtube_id(session, youtube_id)
+        if debate is None:
+            debate = create_debate(
+                session,
+                youtube_id=youtube_id,
+                title=title,
+                url=f"https://www.youtube.com/watch?v={youtube_id}",
+            )
+        clear_utterances_for_debate(session, debate.id)
+        for u in utterances_data:
+            session.add(Utterance(
+                debate_id=debate.id,
+                speaker=u["speaker"],
+                text=u["text"],
+                start_time=u["start_time"],
+                end_time=u["end_time"],
+            ))
+        update_debate_status(session, youtube_id, VideoStatus.COMPLETED)
+
+    typer.echo(f"  Imported {len(utterances_data)} utterances for {title}")
+    typer.echo(f"  Review at /admin/videos/{youtube_id}/review")
+
+
 @app.command()
 def monitor(
     process: bool = typer.Option(False, "--process", help="Auto-process new videos through the pipeline"),

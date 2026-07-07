@@ -4,6 +4,10 @@ set dotenv-load
 process url:
     python -m parker.cli process "{{url}}"
 
+# Import transcript directly from YouTube (fast, no WhisperX)
+import-yt url:
+    python -m parker.cli import-yt "{{url}}"
+
 # Process multiple videos from a file (one URL per line)
 batch-process file:
     python -m parker.cli batch "{{file}}"
