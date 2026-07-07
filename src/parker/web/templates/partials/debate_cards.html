@@ -7,29 +7,6 @@
         <small style="color: var(--pico-muted-color);">{{ debate.upload_date }}</small>
         {% endif %}
     </h4>
-
-    {% set topics = debate_topics.get(debate.id, []) %}
-    {% if topics %}
-    <div class="topic-tags">
-        {% for topic in topics %}
-        <a href="/patterns/topic/{{ topic.name | urlencode }}" class="topic-tag">{{ topic.name }}</a>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    {% set stances = debate_stances.get(debate.id, []) %}
-    {% if stances %}
-    <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-        {% for s in stances %}
-        <span style="font-size: 0.8rem;">
-            <span class="speaker-badge speaker-{{ s.speaker }}" style="cursor: default; font-size: 0.7rem;">
-                {{ s.speaker | upper }}
-            </span>
-            <span class="stance-inline stance-{{ s.label }}" style="font-size: 0.75rem;">{{ s.label }}</span>
-        </span>
-        {% endfor %}
-    </div>
-    {% endif %}
 </div>
 {% endfor %}
 {% else %}

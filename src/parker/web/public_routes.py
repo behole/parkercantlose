@@ -147,19 +147,12 @@ async def debate_list(
         )
         topic_freq = crud.get_topic_frequency(session)
         all_topics = sorted(set(t[0] for t in topic_freq))
-        debate_topics = {}
-        debate_stances = {}
-        for debate in debates:
-            debate_topics[debate.id] = crud.get_topics_for_debate(session, debate.id)
-            debate_stances[debate.id] = crud.get_stances_for_debate(session, debate.id)
     return templates.template_response(
         "debate_list.html",
         {
             "request": request,
             "debates": debates,
             "all_topics": all_topics,
-            "debate_topics": debate_topics,
-            "debate_stances": debate_stances,
             "filters": {
                 "topic": topic,
                 "speaker": speaker,
@@ -194,18 +187,11 @@ async def debate_list_partial(
             date_from=date_from,
             date_to=date_to,
         )
-        debate_topics = {}
-        debate_stances = {}
-        for debate in debates:
-            debate_topics[debate.id] = crud.get_topics_for_debate(session, debate.id)
-            debate_stances[debate.id] = crud.get_stances_for_debate(session, debate.id)
     return templates.template_response(
         "partials/debate_cards.html",
         {
             "request": request,
             "debates": debates,
-            "debate_topics": debate_topics,
-            "debate_stances": debate_stances,
         },
     )
 
