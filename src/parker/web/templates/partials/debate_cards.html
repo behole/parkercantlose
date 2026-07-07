@@ -4,7 +4,7 @@
     <h4>
         <a href="/debate/{{ debate.youtube_id }}">{{ debate.title }}</a>
         {% if debate.upload_date %}
-        <small style="color: var(--pico-muted-color);">{{ debate.upload_date }}</small>
+        <small style="color: var(--pico-muted-color);">{{ debate.upload_date[:4] }}-{{ debate.upload_date[4:6] }}-{{ debate.upload_date[6:] }}</small>
         {% endif %}
     </h4>
 </div>

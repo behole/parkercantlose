@@ -21,7 +21,7 @@
         {{ debate.title }}
         <br><small style="color:var(--pico-muted-color)">{{ debate.youtube_id }}</small>
       </td>
-      <td>{{ debate.upload_date or '—' }}</td>
+      <td>{{ debate.upload_date[:4] + '-' + debate.upload_date[4:6] + '-' + debate.upload_date[6:] if debate.upload_date and debate.upload_date|length >= 8 else debate.upload_date or '—' }}</td>
       <td>
         {% include "partials/status_badge.html" with context %}
       </td>
