@@ -6,6 +6,11 @@
 {% block content %}
 <h1>Debates</h1>
 
+<form action="/search" method="get" style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
+  <input type="search" name="q" placeholder="Search transcript text..." style="flex:1; max-width: 400px;" value="">
+  <button type="submit">Search</button>
+</form>
+
 <form class="filter-bar"
       hx-get="/debates/partials/list"
       hx-target="#debate-results"
