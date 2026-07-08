@@ -51,6 +51,7 @@ class Debate(SQLModel, table=True):
     youtube_id: str = Field(unique=True, index=True)
     title: str
     url: str
+    slug: Optional[str] = Field(default=None, index=True)
     duration_seconds: Optional[float] = None
     upload_date: Optional[str] = None
     status: VideoStatus = Field(default=VideoStatus.PENDING)
