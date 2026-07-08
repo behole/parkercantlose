@@ -35,6 +35,7 @@ def create_debate(
     session.add(debate)
     session.commit()
     session.refresh(debate)
+    debate.slug = assign_slug(session, debate.id)
     return debate
 
 
