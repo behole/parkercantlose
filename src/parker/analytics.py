@@ -22,30 +22,19 @@ if TYPE_CHECKING:
 
 
 def get_dashboard_stats(session: Session) -> dict:
-    total = session.exec(
-        select(func.count()).select_from(Debate)
-    ).one()
+    total = session.exec(select(func.count()).select_from(Debate)).one()
 
     approved = session.exec(
-        select(func.count())
-        .select_from(Debate)
-        .where(Debate.review_status == ReviewStatus.APPROVED)
+        select(func.count()).select_from(Debate).where(Debate.review_status == ReviewStatus.APPROVED)
     ).one()
 
-    total_hours_row = session.exec(
-        select(func.sum(Debate.duration_seconds))
-        .select_from(Debate)
-    ).one()
+    total_hours_row = session.exec(select(func.sum(Debate.duration_seconds)).select_from(Debate)).one()
     total_hours = round((total_hours_row or 0) / 3600, 1)
 
-    unique_guests = session.exec(
-        select(func.count()).select_from(Guest)
-    ).one()
+    unique_guests = session.exec(select(func.count()).select_from(Guest)).one()
 
     completed = session.exec(
-        select(func.count())
-        .select_from(Debate)
-        .where(Debate.status == VideoStatus.COMPLETED)
+        select(func.count()).select_from(Debate).where(Debate.status == VideoStatus.COMPLETED)
     ).one()
 
     completion_pct = round(completed / total * 100) if total > 0 else 0
@@ -84,15 +73,12 @@ def get_debate_timeline(session: Session) -> list[tuple[str, int]]:
 
 
 def get_recent_activity(session: Session, limit: int = 8) -> list[dict]:
-    debates = session.exec(
-        select(Debate)
-        .order_by(Debate.updated_at.desc())
-        .limit(limit)
-    ).all()
+    debates = session.exec(select(Debate).order_by(Debate.updated_at.desc()).limit(limit)).all()
     return [
         {
             "title": d.title,
             "youtube_id": d.youtube_id,
+            "slug": d.slug,
             "status": d.status.value,
             "review_status": d.review_status.value,
             "updated_at": d.updated_at.isoformat() if d.updated_at else None,
@@ -113,20 +99,14 @@ def detect_duplicate_topics(session: Session, threshold: float = 0.85) -> list[T
 
 def detect_unlinked_guests(session: Session) -> list[Debate]:
     caller_debate_ids = list(
-        session.exec(
-            select(func.distinct(Utterance.debate_id))
-            .where(Utterance.speaker == "caller")
-        ).all()
+        session.exec(select(func.distinct(Utterance.debate_id)).where(Utterance.speaker == "caller")).all()
     )
     if not caller_debate_ids:
         return []
-    caller_ids = set(
-        r[0] if isinstance(r, (tuple,)) else r for r in caller_debate_ids
-    )
+    caller_ids = set(r[0] if isinstance(r, (tuple,)) else r for r in caller_debate_ids)
     return list(
         session.exec(
-            select(Debate)
-            .where(
+            select(Debate).where(
                 Debate.id.in_(caller_ids),
                 Debate.guest_id.is_(None),
                 Debate.review_status == ReviewStatus.APPROVED,
@@ -136,19 +116,13 @@ def detect_unlinked_guests(session: Session) -> list[Debate]:
 
 
 def detect_anomalies(session: Session) -> dict:
-    failed = session.exec(
-        select(func.count())
-        .select_from(Debate)
-        .where(Debate.status == VideoStatus.FAILED)
-    ).one()
+    failed = session.exec(select(func.count()).select_from(Debate).where(Debate.status == VideoStatus.FAILED)).one()
 
     empty = session.exec(
         select(func.count())
         .select_from(Debate)
         .where(
-            Debate.id.notin_(
-                select(Utterance.debate_id).where(Utterance.debate_id.isnot(None))
-            ),
+            Debate.id.notin_(select(Utterance.debate_id).where(Utterance.debate_id.isnot(None))),
             Debate.status == VideoStatus.COMPLETED,
         )
     ).one()
@@ -177,9 +151,7 @@ def auto_merge_topics(session: Session, threshold: float = 0.95) -> int:
         topic_b = session.get(Topic, match.topic_b_id)
         if topic_a is None or topic_b is None:
             continue
-        stances_for_b = session.exec(
-            select(Stance).where(Stance.topic_id == topic_b.id)
-        ).all()
+        stances_for_b = session.exec(select(Stance).where(Stance.topic_id == topic_b.id)).all()
         for stance in stances_for_b:
             stance.topic_id = topic_a.id
             session.add(stance)
@@ -235,9 +207,7 @@ def get_speaker_balance(session: Session) -> list[dict]:
             func.count(Utterance.id).label("utterance_count"),
             func.sum(Utterance.end_time - Utterance.start_time).label("speaking_time"),
             func.sum(
-                func.length(Utterance.text)
-                - func.length(func.replace(Utterance.text, " ", ""))
-                + 1,
+                func.length(Utterance.text) - func.length(func.replace(Utterance.text, " ", "")) + 1,
             ).label("word_count"),
         )
         .join(Utterance, Utterance.debate_id == Debate.id)
@@ -246,14 +216,16 @@ def get_speaker_balance(session: Session) -> list[dict]:
     ).all()
     result = []
     for row in rows:
-        result.append({
-            "youtube_id": row[0],
-            "title": row[1],
-            "speaker": row[2],
-            "utterance_count": row[3],
-            "speaking_time": round(row[4] or 0, 0),
-            "word_count": row[5] or 0,
-        })
+        result.append(
+            {
+                "youtube_id": row[0],
+                "title": row[1],
+                "speaker": row[2],
+                "utterance_count": row[3],
+                "speaking_time": round(row[4] or 0, 0),
+                "word_count": row[5] or 0,
+            }
+        )
     return result
 
 
@@ -272,12 +244,14 @@ def get_stance_matrix(session: Session) -> list[dict]:
     ).all()
     result = []
     for row in rows:
-        result.append({
-            "topic": row[0],
-            "speaker": row[1],
-            "label": row[2],
-            "count": row[3],
-        })
+        result.append(
+            {
+                "topic": row[0],
+                "speaker": row[1],
+                "label": row[2],
+                "count": row[3],
+            }
+        )
     return result
 
 
@@ -310,11 +284,13 @@ def get_stance_consistency(session: Session, speaker: str = "parker") -> list[di
     ).all()
     result = []
     for row in rows:
-        result.append({
-            "topic": row[0],
-            "upload_date": row[1],
-            "label": row[2],
-        })
+        result.append(
+            {
+                "topic": row[0],
+                "upload_date": row[1],
+                "label": row[2],
+            }
+        )
     return result
 
 
@@ -351,9 +327,11 @@ def get_confidence_distribution(session: Session) -> list[dict]:
     ).all()
     result = []
     for row in rows:
-        result.append({
-            "label": row[0],
-            "speaker": row[1],
-            "confidence": row[2],
-        })
+        result.append(
+            {
+                "label": row[0],
+                "speaker": row[1],
+                "confidence": row[2],
+            }
+        )
     return result
