@@ -128,6 +128,28 @@ def cleanup() -> None:
     typer.echo(f"Linked {linked} guest(s)")
 
 
+@app.command(name="backfill-slugs")
+def backfill_slugs() -> None:
+    """Generate slugs for existing debates that don't have one yet."""
+    from parker.crud import assign_slug, get_all_debates
+    from parker.db import get_session
+
+    settings = get_settings()
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+
+    with get_session(engine) as session:
+        debates = get_all_debates(session)
+        missing = [d for d in debates if not d.slug]
+        if not missing:
+            typer.echo("All debates already have slugs.")
+            return
+        typer.echo(f"Backfilling slugs for {len(missing)} debate(s)...")
+        for d in missing:
+            slug = assign_slug(session, d.id)
+            typer.echo(f"  {d.youtube_id}: {d.title[:40]:<40} -> {slug}")
+
+
 @app.command()
 def analyze(
     youtube_id: str = typer.Option(None, "--youtube-id", help="Analyze a specific debate by YouTube ID"),
