@@ -46,7 +46,7 @@
     {% for act in recent_activity %}
     <div class="activity-item">
       <span class="activity-time">{{ act.status }}</span>
-      &mdash; <a href="/debate/{{ act.youtube_id }}">{{ act.title }}</a>
+      &mdash; <a href="/debate/{{ act.slug or act.youtube_id }}">{{ act.title }}</a>
     </div>
     {% endfor %}
     {% else %}

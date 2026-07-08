@@ -2,7 +2,7 @@
 {% for debate in debates %}
 <div class="debate-card">
     <h4>
-        <a href="/debate/{{ debate.youtube_id }}">{{ debate.title }}</a>
+        <a href="/debate/{{ debate.slug or debate.youtube_id }}">{{ debate.title }}</a>
         {% if debate.upload_date %}
         <small style="color: var(--pico-muted-color);">{{ debate.upload_date[:4] }}-{{ debate.upload_date[4:6] }}-{{ debate.upload_date[6:] }}</small>
         {% endif %}
