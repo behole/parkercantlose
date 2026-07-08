@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from sqlmodel import Session, delete, func, select
@@ -40,6 +41,90 @@ def create_debate(
 def get_debate_by_youtube_id(session: Session, youtube_id: str) -> Debate | None:
     statement = select(Debate).where(Debate.youtube_id == youtube_id)
     return session.exec(statement).first()
+
+
+_SLUG_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "on",
+        "in",
+        "at",
+        "to",
+        "vs",
+        "vs.",
+        "about",
+        "of",
+        "for",
+        "with",
+        "is",
+        "are",
+    }
+)
+_SLUG_MAX_LEN = 50
+
+
+def generate_slug(title: str) -> str:
+    """Generate a URL-safe slug from a debate title.
+
+    Lowercases, strips stopwords/punctuation, hyphenates, truncates to ~50 chars.
+    Falls back to 'debate' for empty input.
+    """
+    if not title or not title.strip():
+        return "debate"
+    words = re.findall(r"[a-z0-9]+", title.lower())
+    kept = [w for w in words if w not in _SLUG_STOPWORDS]
+    if not kept:
+        return "debate"
+    slug = "-".join(kept)
+    if len(slug) <= _SLUG_MAX_LEN:
+        return slug
+    truncated = slug[:_SLUG_MAX_LEN]
+    if "-" in truncated:
+        truncated = truncated[: truncated.rfind("-")]
+    return truncated or "debate"
+
+
+def get_debate_by_slug(session: Session, slug: str) -> Debate | None:
+    """Look up a debate by its slug."""
+    statement = select(Debate).where(Debate.slug == slug)
+    return session.exec(statement).first()
+
+
+def assign_slug(session: Session, debate_id: int) -> str:
+    """Generate and assign a unique slug to a debate.
+
+    On collision, appends the YouTube ID suffix to disambiguate.
+    Returns the assigned slug.
+    """
+    debate = session.get(Debate, debate_id)
+    if debate is None:
+        raise ValueError(f"Debate {debate_id} not found")
+    base_slug = generate_slug(debate.title)
+    slug = base_slug
+    while True:
+        existing = session.exec(select(Debate).where(Debate.slug == slug, Debate.id != debate_id)).first()
+        if existing is None:
+            break
+        slug = f"{base_slug}-{debate.youtube_id}"
+        # Final safety: if even that collides, append a counter
+        counter = 2
+        candidate = slug
+        while session.exec(select(Debate).where(Debate.slug == candidate, Debate.id != debate_id)).first() is not None:
+            candidate = f"{slug}-{counter}"
+            counter += 1
+        slug = candidate
+        break
+    debate.slug = slug
+    debate.updated_at = datetime.utcnow()
+    session.add(debate)
+    session.commit()
+    session.refresh(debate)
+    return slug
 
 
 def update_debate_status(
@@ -392,11 +477,7 @@ def link_debate_to_guest(session: Session, debate_id: int, guest_id: int) -> Deb
 
 def get_guest_appearances(session: Session, guest_id: int) -> list[Debate]:
     """Get all debates where this guest appeared as the caller."""
-    statement = (
-        select(Debate)
-        .where(Debate.guest_id == guest_id)
-        .order_by(Debate.created_at.desc())
-    )
+    statement = select(Debate).where(Debate.guest_id == guest_id).order_by(Debate.created_at.desc())
     return list(session.exec(statement).all())
 
 
@@ -653,9 +734,7 @@ def merge_topic_match(session: Session, match_id: int) -> dict | None:
     topic_b = session.get(Topic, match.topic_b_id)
     if topic_a is None or topic_b is None:
         return None
-    stances = session.exec(
-        select(Stance).where(Stance.topic_id == topic_b.id)
-    ).all()
+    stances = session.exec(select(Stance).where(Stance.topic_id == topic_b.id)).all()
     for stance in stances:
         stance.topic_id = topic_a.id
         session.add(stance)

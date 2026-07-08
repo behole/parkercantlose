@@ -1,7 +1,10 @@
 from pathlib import Path
 
 from parker.crud import (
+    assign_slug,
     create_debate,
+    generate_slug,
+    get_debate_by_slug,
     get_debate_by_youtube_id,
     get_debates_by_status,
     merge_topic_match,
@@ -158,3 +161,63 @@ def test_reject_topic_match(settings):
     with get_session(engine) as session:
         match_after = session.get(TopicMatch, match_id)
         assert match_after.status == "rejected"
+
+
+def test_generate_slug_basic(settings):
+    assert generate_slug("Parker vs. John on Immigration Policy") == "parker-john-immigration-policy"
+
+
+def test_generate_slug_strips_stopwords(settings):
+    assert generate_slug("Parker and the Caller on the Economy") == "parker-caller-economy"
+
+
+def test_generate_slug_truncates_long_titles(settings):
+    long_title = "Parker Debates a Very Long Windy Caller About Multiple Topics at Great Length"
+    slug = generate_slug(long_title)
+    assert len(slug) <= 50
+    assert not slug.endswith("-")
+
+
+def test_generate_slug_strips_punctuation(settings):
+    assert generate_slug("Parker vs. John: Immigration!!") == "parker-john-immigration"
+
+
+def test_generate_slug_empty_title(settings):
+    assert generate_slug("") == "debate"
+    assert generate_slug("   ") == "debate"
+
+
+def test_get_debate_by_slug_not_found(settings):
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+    with get_session(engine) as session:
+        found = get_debate_by_slug(session, "nonexistent-slug")
+    assert found is None
+
+
+def test_assign_slug_no_collision(settings):
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+    with get_session(engine) as session:
+        d = create_debate(session, "abc123", "Parker vs John on Immigration", "https://youtube.com/watch?v=abc123")
+        slug = assign_slug(session, d.id)
+    assert slug == "parker-john-immigration"
+
+    with get_session(engine) as session:
+        found = get_debate_by_slug(session, "parker-john-immigration")
+    assert found is not None
+    assert found.id == d.id
+
+
+def test_assign_slug_collision_appends_youtube_id(settings):
+    engine = get_engine(settings.db_path)
+    init_db(engine)
+    with get_session(engine) as session:
+        d1 = create_debate(session, "abc123", "Parker vs John on Immigration", "https://youtube.com/watch?v=abc123")
+        d2 = create_debate(session, "def456", "Parker vs John on Immigration", "https://youtube.com/watch?v=def456")
+        slug1 = assign_slug(session, d1.id)
+        slug2 = assign_slug(session, d2.id)
+    assert slug1 == "parker-john-immigration"
+    assert slug2 != slug1
+    assert slug2.startswith("parker-john-immigration-")
+    assert "def456"[-6:] in slug2 or "def456" in slug2
