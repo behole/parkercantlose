@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from starlette.responses import RedirectResponse
 
 from parker import crud
 from parker.analytics import (
@@ -49,16 +50,18 @@ async def dashboard_home(request: Request):
     )
 
 
-@router.get("/debate/{youtube_id}", response_class=HTMLResponse)
-async def debate_detail(request: Request, youtube_id: str):
-    from fastapi import HTTPException
-
+@router.get("/debate/{identifier}", response_class=HTMLResponse)
+async def debate_detail(request: Request, identifier: str):
     templates = _get_templates(request)
     engine = _get_engine(request)
     with get_session(engine) as session:
-        debate = crud.get_debate_by_youtube_id(session, youtube_id)
+        debate = crud.get_debate_by_slug(session, identifier)
         if debate is None:
-            raise HTTPException(status_code=404, detail=f"Debate not found: {youtube_id}")
+            debate = crud.get_debate_by_youtube_id(session, identifier)
+        if debate is None:
+            raise HTTPException(status_code=404, detail=f"Debate not found: {identifier}")
+        if debate.slug and debate.slug != identifier:
+            return RedirectResponse(url=f"/debate/{debate.slug}", status_code=301)
         topics = crud.get_topics_for_debate(session, debate.id)
         all_stances = crud.get_stances_for_debate(session, debate.id)
         keywords = crud.get_keywords_for_debate(session, debate.id)
@@ -76,7 +79,7 @@ async def debate_detail(request: Request, youtube_id: str):
         {
             "request": request,
             "debate": debate,
-            "youtube_id": youtube_id,
+            "youtube_id": debate.youtube_id,
             "topics": topics,
             "stances_by_topic": stances_by_topic,
             "parker_keywords": parker_keywords,
