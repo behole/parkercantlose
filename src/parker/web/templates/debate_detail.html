@@ -12,25 +12,52 @@
   </ul>
 </nav>
 
-<section class="debate-header">
-  <h1>{{ debate.title }}</h1>
-  <div class="debate-meta">
-    {% if debate.upload_date %}
-    <span>{{ debate.upload_date[:4] }}-{{ debate.upload_date[4:6] }}-{{ debate.upload_date[6:8] }}</span>
-    {% endif %}
-    {% if debate.duration_seconds %}
-    <span>{{ debate.duration_seconds // 60 }} min {{ debate.duration_seconds % 60 }}s</span>
+<h1>{{ debate.title }}</h1>
+<div class="debate-meta">
+  {% if debate.upload_date %}
+  <span>{{ debate.upload_date[:4] }}-{{ debate.upload_date[4:6] }}-{{ debate.upload_date[6:8] }}</span>
+  {% endif %}
+  {% if debate.duration_seconds %}
+  <span>{{ debate.duration_seconds // 60 }} min {{ debate.duration_seconds % 60 }}s</span>
+  {% endif %}
+</div>
+
+<div class="review-layout">
+  <div class="video-panel">
+    <div id="player-wrap">
+      <div id="player"></div>
+    </div>
+    <div class="video-controls">
+      <label>
+        <input type="checkbox" id="auto-scroll-toggle" checked>
+        Auto-scroll transcript
+      </label>
+    </div>
+  </div>
+
+  <div class="transcript-panel" id="transcript-panel">
+    {% if utterances %}
+    <div class="transcript-search">
+      <input type="text" id="transcript-search-input" placeholder="Search transcript..." oninput="filterTranscript(this.value)">
+    </div>
+    {% for u in utterances %}
+    <div class="segment"
+         id="segment-{{ u.id }}"
+         data-start="{{ u.start_time }}"
+         data-end="{{ u.end_time }}"
+         data-text="{{ u.text | lower }}">
+      <span class="segment-time" onclick="seekTo({{ u.start_time }})">
+        {{ '%d:%02d' % (u.start_time // 60, u.start_time % 60) }}
+      </span>
+      <span class="speaker-badge speaker-{{ u.speaker }}">{{ u.speaker }}</span>
+      <span class="segment-text">{{ u.text }}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>No transcript available for this debate.</p>
     {% endif %}
   </div>
-  <div class="debate-embed">
-    <iframe
-      src="https://www.youtube.com/embed/{{ youtube_id }}"
-      title="{{ debate.title }}"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen>
-    </iframe>
-  </div>
-</section>
+</div>
 
 {% if topics %}
 <section>
@@ -120,38 +147,12 @@
 </section>
 {% endif %}
 
-{% if utterances %}
-<section class="transcript-section">
-  <h2>Full Transcript</h2>
-  <div class="transcript-search">
-    <input type="text" id="transcript-search-input" placeholder="Search transcript..." oninput="filterTranscript(this.value)">
-  </div>
-  <div class="public-transcript" id="transcript-container">
-    {% for u in utterances %}
-    <div class="transcript-entry" data-text="{{ u.text | lower }}">
-      <span class="transcript-time">{{ '%d:%02d' % (u.start_time // 60, u.start_time % 60) }}</span>
-      <span class="speaker-badge speaker-{{ u.speaker }}">{{ u.speaker }}</span>
-      <span class="transcript-text">{{ u.text }}</span>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-{% endif %}
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-function filterTranscript(query) {
-  var entries = document.querySelectorAll('.transcript-entry');
-  var q = query.toLowerCase().trim();
-  entries.forEach(function(el) {
-    if (!q || el.dataset.text.includes(q)) {
-      el.style.display = '';
-    } else {
-      el.style.display = 'none';
-    }
-  });
-}
+  window.YOUTUBE_VIDEO_ID = "{{ youtube_id }}";
 </script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="/static/public-debate.js"></script>
 {% endblock %}
