@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-last_updated: "2026-04-12T22:45:00.000Z"
+last_updated: "2026-07-16T00:00:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -13,7 +13,7 @@ progress:
 
 # Project State: Parker Debate Dashboard
 
-**Last Updated:** 2026-04-12
+**Last Updated:** 2026-07-16
 
 ## Current Status
 
@@ -21,17 +21,23 @@ progress:
 |-------|-------|
 | Current Phase | Phase 4 (Complete) |
 | Current Plan | All plans complete |
-| Status | Complete |
+| Status | Complete — running on real data |
 | Requirements Defined | 20 (v1) |
 | Requirements Mapped | 20 (100%) |
-| Videos Processed | 0 |
+| Videos Processed | **15** |
+| Utterances Extracted | **3,934** (parker 1,976 / caller 1,957 / unknown 1) |
+| Human Review | 6 APPROVED · 3 IN_PROGRESS · 6 UNREVIEWED |
+| NLP Analysis Run | 3 of 15 debates (11 distinct topics, 50 keywords, 30 stances) |
 | Progress | [██████████] 100% (18/18 plans complete) |
+
+> **Note:** local DB (`data/`) is gitignored, so a fresh clone shows no artifacts.
+> Numbers above are from `data/db/debates.db` as of 2026-07-16.
 
 ## Phase Status
 
 | Phase | Status | Started | Completed |
 |-------|--------|---------|-----------|
-| Phase 1: Ingestion & Transcription | 7/7 plans done (manual validation pending) | 2026-04-09 | --- |
+| Phase 1: Ingestion & Transcription | 7/7 plans done — validated on 15 real debates | 2026-04-09 | 2026-07-08 |
 | Phase 2: Transcript Review | 3/3 plans done | 2026-04-12 | 2026-04-12 |
 | Phase 3: NLP Analysis | 4/4 plans done | 2026-04-12 | 2026-04-12 |
 | Phase 4: Public Dashboard | 4/4 plans done | 2026-04-12 | 2026-04-12 |
@@ -74,7 +80,11 @@ None.
 
 ## Notes
 
-- Phase 1 manual validation still pending (WhisperX diarization quality on real Parker debate audio)
+- Phase 1 manual validation **done** — WhisperX diarization run on 15 real Parker debates.
+  3,934 utterances attributed with 1 `unknown` (99.97%); parker/caller split 1,976/1,957,
+  consistent with 1-on-1 format. 6 debates human-reviewed and APPROVED via the review UI.
+  Remaining: 3 IN_PROGRESS, 6 UNREVIEWED.
+- NLP analysis has only been run on 3 of 15 debates — that's the actual open gap now.
 - All 48 existing tests pass, all lint clean on Phase 4 code
 - Admin routes moved to /admin/* prefix, public routes at root /
 - FTS5 triggers keep search index in sync automatically
