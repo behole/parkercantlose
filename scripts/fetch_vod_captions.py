@@ -24,12 +24,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 OUT_DIR = Path("data/raw/captions")
 FAIL_LOG = OUT_DIR / "_failures.json"
-YTDLP = Path.home() / ".hermes/hermes-agent/venv/bin/yt-dlp"
+YTDLP = Path(__file__).resolve().parents[1] / ".venv/bin/yt-dlp"
 
 
 def fetch_via_ytdlp(vid: str) -> dict:
     """Fallback: pull auto-subs via yt-dlp (works for age-restricted when
-    Firefox is signed into YouTube, and rides different endpoints than
+    cookies.txt is present, and rides different endpoints than
     youtube-transcript-api)."""
     import subprocess
 
@@ -41,7 +41,8 @@ def fetch_via_ytdlp(vid: str) -> dict:
         else ["--cookies-from-browser", "firefox"]
     )
     cmd = [
-        str(YTDLP), "--js-runtimes", "node", *cookie_args,
+        str(YTDLP), "--js-runtimes", "node", "--impersonate", "chrome",
+        "--ignore-no-formats-error", *cookie_args,
         "--skip-download", "--write-auto-subs", "--sub-langs", "en",
         "--sub-format", "json3", "-o", str(outtmpl) + ".%(ext)s",
         f"https://www.youtube.com/watch?v={vid}",
