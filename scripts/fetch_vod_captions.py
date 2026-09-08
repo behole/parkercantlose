@@ -24,6 +24,47 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 OUT_DIR = Path("data/raw/captions")
 FAIL_LOG = OUT_DIR / "_failures.json"
+YTDLP = Path.home() / ".hermes/hermes-agent/venv/bin/yt-dlp"
+
+
+def fetch_via_ytdlp(vid: str) -> dict:
+    """Fallback: pull auto-subs via yt-dlp (works for age-restricted when
+    Firefox is signed into YouTube, and rides different endpoints than
+    youtube-transcript-api)."""
+    import subprocess
+
+    outtmpl = OUT_DIR / "_ytdlp_tmp"
+    cmd = [
+        str(YTDLP), "--cookies-from-browser", "firefox", "--js-runtimes", "node",
+        "--skip-download", "--write-auto-subs", "--sub-langs", "en",
+        "--sub-format", "json3", "-o", str(outtmpl) + ".%(ext)s",
+        f"https://www.youtube.com/watch?v={vid}",
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+    sub = OUT_DIR / f"_ytdlp_tmp.en.json3"
+    if not sub.exists():
+        raise RuntimeError(f"yt-dlp no subs: {(r.stderr or r.stdout).strip()[-180:]}")
+    data = json.loads(sub.read_text())
+    segs = []
+    for ev in data.get("events", []):
+        segs_list = ev.get("segs")
+        if not segs_list:
+            continue
+        text = "".join(s.get("utf8", "") for s in segs_list).replace("\n", " ").strip()
+        if not text:
+            continue
+        start = (ev.get("tStartMs") or 0) / 1000
+        dur = (ev.get("dDurationMs") or 0) / 1000
+        segs.append({"start": round(start, 2), "end": round(start + dur, 2), "text": text})
+    sub.unlink()
+    return {
+        "video_id": vid,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "is_auto_generated": True,
+        "segment_count": len(segs),
+        "segments": segs,
+        "via": "ytdlp",
+    }
 
 
 def load_failures() -> dict:
@@ -94,7 +135,24 @@ def main() -> int:
         if args.limit and done >= args.limit:
             break
         try:
-            dump = fetch_one(vid, None)
+            try:
+                dump = fetch_one(vid, None)
+            except Exception as primary_err:  # noqa: BLE001
+                kind0 = classify(str(primary_err))
+                if kind0 in ("age_restricted", "rate_limited"):
+                    # second path: yt-dlp with Firefox cookies (different endpoints)
+                    dump = fetch_via_ytdlp(vid)
+                    dump["title"] = title
+                    out.write_text(json.dumps(dump))
+                    fails.pop(vid, None)
+                    consecutive_blocks = 0
+                    done += 1
+                    if done % 10 == 0:
+                        save_failures(fails)
+                        print(f"[{i + 1}/{len(targets)}] ok={done} skip={skipped} err={err}", flush=True)
+                    time.sleep(args.delay + random.uniform(0, args.jitter))
+                    continue
+                raise
             dump["title"] = title
             out.write_text(json.dumps(dump))
             fails.pop(vid, None)
