@@ -34,8 +34,14 @@ def fetch_via_ytdlp(vid: str) -> dict:
     import subprocess
 
     outtmpl = OUT_DIR / "_ytdlp_tmp"
+    cookie_file = OUT_DIR / "cookies.txt"
+    cookie_args = (
+        ["--cookies", str(cookie_file)]
+        if cookie_file.exists()
+        else ["--cookies-from-browser", "firefox"]
+    )
     cmd = [
-        str(YTDLP), "--cookies-from-browser", "firefox", "--js-runtimes", "node",
+        str(YTDLP), "--js-runtimes", "node", *cookie_args,
         "--skip-download", "--write-auto-subs", "--sub-langs", "en",
         "--sub-format", "json3", "-o", str(outtmpl) + ".%(ext)s",
         f"https://www.youtube.com/watch?v={vid}",
